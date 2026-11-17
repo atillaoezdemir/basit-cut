@@ -1,0 +1,429 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		BC0000000000000000000301 /* BasitCutCore in Frameworks */ = {isa = PBXBuildFile; productRef = BC0000000000000000000201 /* BasitCutCore */; };
+		BC0000000000000000000302 /* BasitCutMedia in Frameworks */ = {isa = PBXBuildFile; productRef = BC0000000000000000000202 /* BasitCutMedia */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		BC0000000000000000000401 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BC0000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BC0000000000000000000501;
+			remoteInfo = BasitCut;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		BC0000000000000000000101 /* BasitCut.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BasitCut.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BC0000000000000000000102 /* BasitCutTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BasitCutTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BC0000000000000000000103 /* BasitCutKit */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = BasitCutKit; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		BC0000000000000000000701 /* Exceptions for "BasitCut" folder in "BasitCut" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Resources/BasitCut.entitlements,
+				Resources/Info.plist,
+			);
+			target = BC0000000000000000000501 /* BasitCut */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		BC0000000000000000000601 /* BasitCut */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				BC0000000000000000000701 /* Exceptions for "BasitCut" folder in "BasitCut" target */,
+			);
+			path = BasitCut;
+			sourceTree = "<group>";
+		};
+		BC0000000000000000000602 /* BasitCutTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = BasitCutTests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		BC0000000000000000000811 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BC0000000000000000000301 /* BasitCutCore in Frameworks */,
+				BC0000000000000000000302 /* BasitCutMedia in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BC0000000000000000000821 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		BC0000000000000000000011 = {
+			isa = PBXGroup;
+			children = (
+				BC0000000000000000000601 /* BasitCut */,
+				BC0000000000000000000602 /* BasitCutTests */,
+				BC0000000000000000000013 /* Packages */,
+				BC0000000000000000000012 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		BC0000000000000000000012 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				BC0000000000000000000101 /* BasitCut.app */,
+				BC0000000000000000000102 /* BasitCutTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		BC0000000000000000000013 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				BC0000000000000000000103 /* BasitCutKit */,
+			);
+			path = Packages;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		BC0000000000000000000501 /* BasitCut */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BC0000000000000000000921 /* Build configuration list for PBXNativeTarget "BasitCut" */;
+			buildPhases = (
+				BC0000000000000000000810 /* Sources */,
+				BC0000000000000000000811 /* Frameworks */,
+				BC0000000000000000000812 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				BC0000000000000000000601 /* BasitCut */,
+			);
+			name = BasitCut;
+			packageProductDependencies = (
+				BC0000000000000000000201 /* BasitCutCore */,
+				BC0000000000000000000202 /* BasitCutMedia */,
+			);
+			productName = BasitCut;
+			productReference = BC0000000000000000000101 /* BasitCut.app */;
+			productType = "com.apple.product-type.application";
+		};
+		BC0000000000000000000502 /* BasitCutTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BC0000000000000000000931 /* Build configuration list for PBXNativeTarget "BasitCutTests" */;
+			buildPhases = (
+				BC0000000000000000000820 /* Sources */,
+				BC0000000000000000000821 /* Frameworks */,
+				BC0000000000000000000822 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				BC0000000000000000000402 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				BC0000000000000000000602 /* BasitCutTests */,
+			);
+			name = BasitCutTests;
+			packageProductDependencies = (
+			);
+			productName = BasitCutTests;
+			productReference = BC0000000000000000000102 /* BasitCutTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		BC0000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2600;
+				LastUpgradeCheck = 2600;
+				TargetAttributes = {
+					BC0000000000000000000501 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					BC0000000000000000000502 = {
+						CreatedOnToolsVersion = 26.0;
+						TestTargetID = BC0000000000000000000501;
+					};
+				};
+			};
+			buildConfigurationList = BC0000000000000000000911 /* Build configuration list for PBXProject "BasitCut" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = BC0000000000000000000011;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				BC0000000000000000000221 /* XCLocalSwiftPackageReference "Packages/BasitCutKit" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = BC0000000000000000000012 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				BC0000000000000000000501 /* BasitCut */,
+				BC0000000000000000000502 /* BasitCutTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		BC0000000000000000000812 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BC0000000000000000000822 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		BC0000000000000000000810 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BC0000000000000000000820 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		BC0000000000000000000402 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BC0000000000000000000501 /* BasitCut */;
+			targetProxy = BC0000000000000000000401 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		BC0000000000000000000912 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		BC0000000000000000000913 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		BC0000000000000000000922 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = BasitCut/Resources/BasitCut.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BasitCut/Resources/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "basit-cut";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.video";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.atillaoezdemir.basitcut;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Debug;
+		};
+		BC0000000000000000000923 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = BasitCut/Resources/BasitCut.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BasitCut/Resources/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "basit-cut";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.video";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.atillaoezdemir.basitcut;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Release;
+		};
+		BC0000000000000000000932 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.atillaoezdemir.basitcut.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BasitCut.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BasitCut";
+			};
+			name = Debug;
+		};
+		BC0000000000000000000933 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.atillaoezdemir.basitcut.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BasitCut.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BasitCut";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		BC0000000000000000000911 /* Build configuration list for PBXProject "BasitCut" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BC0000000000000000000912 /* Debug */,
+				BC0000000000000000000913 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BC0000000000000000000921 /* Build configuration list for PBXNativeTarget "BasitCut" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BC0000000000000000000922 /* Debug */,
+				BC0000000000000000000923 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BC0000000000000000000931 /* Build configuration list for PBXNativeTarget "BasitCutTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BC0000000000000000000932 /* Debug */,
+				BC0000000000000000000933 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		BC0000000000000000000221 /* XCLocalSwiftPackageReference "Packages/BasitCutKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/BasitCutKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		BC0000000000000000000201 /* BasitCutCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = BasitCutCore;
+		};
+		BC0000000000000000000202 /* BasitCutMedia */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = BasitCutMedia;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = BC0000000000000000000001 /* Project object */;
+}
