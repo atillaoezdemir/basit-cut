@@ -47,9 +47,8 @@ All types are `Codable & Sendable & Hashable` value types.
 ```swift
 struct Project {
     var formatVersion: Int
-    var sources: [MediaSource.ID: MediaSource]   // referenced files, never modified
+    var sources: [MediaSource]                     // referenced files, never modified
     var clips: [Clip]                              // timeline order = array order
-    var transitions: [Clip.ID: Transition]         // keyed by the clip BEFORE the cut; missing = hard cut
     var crop: CropSetting                          // project-wide
     var cover: CoverFrame?                         // source + time; image stored in the package
 }
@@ -59,17 +58,20 @@ struct MediaSource {
     var bookmark: Data            // security-scoped bookmark
     var lastKnownPath: String     // for display / relink
     var duration: RationalTime
-    var orientedSize: Size        // after applying preferredTransform
-    var frameRate: Double
+    var naturalSize: Size         // encoded size
+    var transform: Transform2D    // preferredTransform (rotation); orientedSize is derived
+    var frameDuration: RationalTime
     var codec: VideoCodec         // .h264, .hevc, …
     var videoBitrate: Int         // average, bits per second
     var hasAudio: Bool
+    var creationDate: Date?
 }
 
 struct Clip {
     var id: UUID
     var sourceID: MediaSource.ID
     var sourceRange: TimeRange    // in/out points in the source
+    var outgoingTransition: Transition?   // transition at the cut to the next clip; nil = hard cut
 }
 
 struct Transition {
