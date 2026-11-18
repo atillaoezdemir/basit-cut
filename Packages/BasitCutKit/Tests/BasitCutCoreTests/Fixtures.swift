@@ -10,7 +10,8 @@ enum Fixture {
         frameDuration: RationalTime = fps30,
         size: Size = Size(width: 1920, height: 1080),
         transform: Transform2D = .identity,
-        codec: VideoCodec = .h264
+        codec: VideoCodec = .h264,
+        bitrate: Int = 10_000_000
     ) -> MediaSource {
         MediaSource(
             bookmark: Data(),
@@ -20,7 +21,7 @@ enum Fixture {
             naturalSize: size,
             transform: transform,
             codec: codec,
-            videoBitrate: 10_000_000,
+            videoBitrate: bitrate,
             hasAudio: true
         )
     }
