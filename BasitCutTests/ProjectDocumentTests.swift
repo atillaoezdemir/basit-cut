@@ -31,4 +31,13 @@ struct ProjectDocumentTests {
         ])
         #expect(throws: CocoaError.self) { try ProjectDocument.decode(wrapper) }
     }
+
+    /// AppKit calls `snapshot` on a background queue during autosave.
+    @Test func snapshotWorksOffTheMainThread() async throws {
+        let document = ProjectDocument()
+        let snapshot = try await Task.detached {
+            try document.snapshot(contentType: .basitCutProject)
+        }.value
+        #expect(snapshot == Project())
+    }
 }

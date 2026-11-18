@@ -23,8 +23,10 @@ final class ProjectDocument: ReferenceFileDocument {
         editor = ProjectEditor(project: try Self.decode(configuration.file))
     }
 
+    // Called on a background queue during autosave, so it must not touch
+    // main-actor state.
     nonisolated func snapshot(contentType: UTType) throws -> Project {
-        MainActor.assumeIsolated { editor.project }
+        editor.currentSnapshot
     }
 
     nonisolated func fileWrapper(snapshot: Project, configuration: WriteConfiguration) throws -> FileWrapper {

@@ -22,11 +22,14 @@ struct ProjectWindow: View {
                     .background(.yellow.opacity(0.25))
             }
             preview
-            Divider()
-            TransportBar(session: session)
-            Divider()
-            TimelineView(session: session)
-                .frame(height: 130)
+            // An empty project shows only the import prompt.
+            if !session.project.clips.isEmpty {
+                Divider()
+                TransportBar(session: session)
+                Divider()
+                TimelineView(session: session)
+                    .frame(height: 130)
+            }
         }
         .frame(minWidth: 720, minHeight: 480)
         .dropDestination(for: URL.self) { urls, _ in

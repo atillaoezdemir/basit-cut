@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import Synchronization
 
 /// The single entry point for edits to a project.
 ///
@@ -13,11 +14,20 @@ public final class ProjectEditor: Observable {
     // initializer can stay nonisolated: documents are decoded off the main actor.
     private let registrar = ObservationRegistrar()
     private var storage: Project
+    // A copy of `storage` that any thread can read. AppKit asks the document
+    // for its contents on a background queue when it autosaves.
+    private let latest: Mutex<Project>
 
     public weak var undoManager: UndoManager?
 
     public nonisolated init(project: Project = Project()) {
         self.storage = project
+        self.latest = Mutex(project)
+    }
+
+    /// The current project, readable from any thread (e.g. while saving).
+    public nonisolated var currentSnapshot: Project {
+        latest.withLock { $0 }
     }
 
     public private(set) var project: Project {
@@ -27,6 +37,7 @@ public final class ProjectEditor: Observable {
         }
         set {
             registrar.withMutation(of: self, keyPath: \.project) { storage = newValue }
+            latest.withLock { $0 = newValue }
         }
     }
 

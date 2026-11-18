@@ -62,4 +62,17 @@ struct ProjectEditorTests {
         #expect(editor.project.sources[0].lastKnownPath == "/moved.mov")
         #expect(!undoManager.canUndo)
     }
+
+    @Test func currentSnapshotFollowsEditsAndUndo() async throws {
+        let (editor, undoManager) = makeEditor(Fixture.project(clipSeconds: [4, 6]))
+        try step(undoManager) { _ = try editor.perform("Split") { try TimelineEditor.split(at: s(2), in: &$0) } }
+        // Read from a background task, the way AppKit autosave does.
+        let afterSplit = await Task.detached { editor.currentSnapshot }.value
+        #expect(afterSplit == editor.project)
+        #expect(afterSplit.clips.count == 3)
+
+        undoManager.undo()
+        #expect(editor.currentSnapshot == editor.project)
+        #expect(editor.currentSnapshot.clips.count == 2)
+    }
 }
