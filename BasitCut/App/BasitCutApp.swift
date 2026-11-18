@@ -4,7 +4,10 @@ import SwiftUI
 struct BasitCutApp: App {
     var body: some Scene {
         DocumentGroup(newDocument: { ProjectDocument() }) { file in
-            ProjectWindow(document: file.document)
+            ProjectWindow(
+                document: file.document,
+                name: file.fileURL?.deletingPathExtension().lastPathComponent ?? "Untitled"
+            )
         }
         .commands { ProjectCommands() }
 
@@ -23,6 +26,9 @@ struct ProjectCommands: Commands {
             Button("Import Videos…") { session?.isImporterPresented = true }
                 .keyboardShortcut("i", modifiers: .command)
                 .disabled(session == nil)
+            Button("Export…") { session?.showExport() }
+                .keyboardShortcut("e", modifiers: .command)
+                .disabled(session?.canExport != true)
         }
         CommandMenu("Clip") {
             Button("Split at Playhead") { session?.splitAtPlayhead() }

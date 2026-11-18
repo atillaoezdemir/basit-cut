@@ -37,7 +37,7 @@ basit-cut/
 | Module | Contains | Depends on |
 |---|---|---|
 | **BasitCutCore** | `Project`, `Clip`, `MediaSource`, `Transition`, `CropSetting`, `RationalTime` / `TimeRange`, `TimelineLayout` (time calculations, segment list), `TimelineEditor` (split / trim / reorder / delete / set transition as pure, validated functions), `ProjectEditor` (undo-aware edit entry point), `ExportPlan` (decides codec, bitrate, resolution, passthrough) | Foundation |
-| **BasitCutMedia** | `AssetInspector` (source → `MediaSource` info: duration, oriented size, fps, codec, bitrate, creation date, location), `CompositionBuilder` (Project → `AVMutableComposition` + `AVMutableVideoComposition` + `AVAudioMix`), `Exporter` (passthrough and re-encode paths, progress, cancel), `MetadataWriter`, `ThumbnailProvider`, `BookmarkResolver`, `TestVideoGenerator` (test support) | Core, AVFoundation, VideoToolbox |
+| **BasitCutMedia** | `AssetInspector` (source → `MediaSource` info: duration, oriented size, fps, codec, bitrate, creation date, location), `CompositionBuilder` (Project → `AVMutableComposition` + `AVMutableVideoComposition` + `AVAudioMix`), `Exporter` (passthrough and re-encode paths, progress, cancel), `ArchiveMetadata`, `SecurityScopedBookmark`, `TestVideoGenerator` (test support) | Core, AVFoundation, VideoToolbox |
 | **App** | `DocumentGroup`, `ProjectDocument`, timeline / preview / export views, `PlaybackController`, `KeyboardController`, Settings | Core, Media |
 
 ## Data model (BasitCutCore)
@@ -168,17 +168,20 @@ The same `BuiltComposition` feeds both the `AVPlayerItem` (preview) and the `Exp
 
 ### `ExportPlan` (Core, pure, unit-tested)
 
-It turns `(project, source infos, mode)` into concrete output settings.
+It turns `(project, mode)` into `.passthrough` or `.reencode(ExportSettings)`.
 
-- **Original quality:** source codec, resolution, frame rate, and the duration-weighted average source bitrate. If the project has **no transitions, no crop, and all clips share the same orientation**, the result is `.passthrough`. Otherwise it is a re-encode with these settings.
-- **Space saving:** HEVC with the `hvc1` tag via VideoToolbox hardware encoding, bitrate `min(4000 kbps, source bitrate)`, source frame rate, and resolution fitted within 1920×1080 with orientation kept (4K portrait → 1080×1920, ≤1080p unchanged). Audio is AAC at 128 kbps.
+- **Original quality:** source codec, resolution (the first clip's upright size), frame rate, and the duration-weighted average source bitrate. If the project has **no transitions and no crop**, and every clip shares the first clip's format (size, codec, frame rate) and rotation, the result is `.passthrough`. A single passthrough track can't mix formats or rotations cleanly, so mixed projects are re-encoded. H.264 stays H.264; other codecs (HEVC, ProRes, …) are re-encoded as HEVC. Audio is AAC at 256 kbps.
+- **Space saving:** HEVC with the `hvc1` tag via VideoToolbox, bitrate `min(4000 kbps, source bitrate)`, source frame rate, and resolution fitted within 1920×1080 with orientation kept (4K portrait → 1080×1920, ≤1080p unchanged). Audio is AAC at 128 kbps.
+- If no source reports a bitrate, it is estimated at 0.1 bits per pixel per frame.
 
-### `Exporter` (Media, actor)
+### `Exporter` (Media)
 
-- **Passthrough:** `AVAssetExportSession` with `AVAssetExportPresetPassthrough` on the composition. Edit lists keep the cuts frame-exact without re-encoding.
-- **Re-encode:** `AVAssetReader` (composition + video composition + audio mix) → `AVAssetWriter` with explicit codec and bitrate settings, because export-session presets can't set a bitrate.
-- **Progress** is an `AsyncStream<Double>`. **Cancel** works through task cancellation, and the partial output file is deleted.
-- **Metadata:** creation date, location (ISO 6709), and make/model come from the **first clip**. The cover image is embedded as `commonIdentifierArtwork`. Everything is written through the session's or writer's `metadata`.
+The output is always a QuickTime movie (`.mov`), the container that keeps phone metadata most reliably.
+
+- **Passthrough:** a separate single-track composition (clips back to back, the shared rotation as the track's `preferredTransform`) exported with `AVAssetExportSession` and the passthrough preset. Edit lists keep the cuts frame-exact without re-encoding.
+- **Re-encode:** the preview's `BuiltComposition` is read with `AVAssetReaderVideoCompositionOutput` and `AVAssetReaderAudioMixOutput`, and encoded with `AVAssetWriter` using explicit codec and bitrate settings (export-session presets can't set a bitrate). Frames are rendered at the composition's size and scaled by the encoder for space saving. Audio is mixed to 48 kHz stereo AAC.
+- **Progress** is reported through a callback. **Cancel** works through task cancellation, and the partial output file is deleted.
+- **Metadata:** creation date, location (ISO 6709, plus its accuracy), and make/model/software are copied from the **first clip** (capture-specific identifiers such as the Live Photo content identifier are not). If the file has no creation date but the inspector found one, that date is written. The output file's creation and modification dates are set to the recording date, so Finder doesn't show it as "today". The cover image (Phase 4) will be embedded as `commonIdentifierArtwork`.
 
 ## Concurrency
 

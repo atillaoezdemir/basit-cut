@@ -35,6 +35,10 @@ struct TransportBar: View {
                 .help("Delete Selected Clip (⌫)")
                 .disabled(session.selectedClipID == nil)
 
+            Button("Export", systemImage: "square.and.arrow.up") { session.showExport() }
+                .help("Export (⌘E)")
+                .disabled(!session.canExport)
+
             Divider().frame(height: 18)
 
             Image(systemName: "minus.magnifyingglass").foregroundStyle(.secondary)

@@ -4,11 +4,14 @@ import BasitCutCore
 /// Root view of a project window: preview, transport bar and timeline.
 struct ProjectWindow: View {
     let document: ProjectDocument
+    /// Document name, used as the default export file name.
+    let name: String
     @State private var session: ProjectSession
     @Environment(\.undoManager) private var undoManager
 
-    init(document: ProjectDocument) {
+    init(document: ProjectDocument, name: String) {
         self.document = document
+        self.name = name
         _session = State(initialValue: ProjectSession(editor: document.editor))
     }
 
@@ -53,6 +56,9 @@ struct ProjectWindow: View {
             Button("OK") {}
         } message: { alert in
             Text(alert.message)
+        }
+        .sheet(isPresented: $session.isExportPresented) {
+            ExportSheet(session: session, defaultName: name)
         }
         .alert(
             "Different video format",

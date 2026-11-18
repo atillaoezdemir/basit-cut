@@ -34,12 +34,14 @@ final class ProjectSession {
     let editor: ProjectEditor
     let library = MediaLibrary()
     let playback = PlaybackController()
+    let export = ExportController()
     @ObservationIgnored private(set) lazy var keyboard = KeyboardController(playback: playback)
 
     var selectedClipID: Clip.ID?
     /// Timeline zoom.
     var pointsPerSecond: Double = 40
     var isImporterPresented = false
+    var isExportPresented = false
     private(set) var isImporting = false
     var alert: AppAlert?
     var pendingImport: PendingImport?
@@ -64,6 +66,7 @@ final class ProjectSession {
 
     func close() {
         rebuildTask?.cancel()
+        export.cancel()
         keyboard.detach()
         playback.invalidate()
         library.close()
@@ -75,6 +78,34 @@ final class ProjectSession {
         }
         refreshLibrary()
         scheduleRebuild()
+    }
+
+    // MARK: Export
+
+    var canExport: Bool { !project.clips.isEmpty }
+
+    func showExport() {
+        guard canExport else { return }
+        playback.pause()
+        isExportPresented = true
+    }
+
+    /// Exports the current project. Missing source files are reported before
+    /// anything is written.
+    func startExport(to url: URL) {
+        let missingNames = project.sources
+            .filter { source in project.clips.contains { $0.sourceID == source.id } && library.assets[source.id] == nil }
+            .map(\.displayName)
+        guard missingNames.isEmpty else {
+            isExportPresented = false
+            alert = AppAlert(
+                title: "Missing source files",
+                message: "These files can’t be found, so the project can’t be exported:\n\n"
+                    + missingNames.joined(separator: "\n")
+            )
+            return
+        }
+        export.start(project: project, assets: library.assets, to: url)
     }
 
     // MARK: Import
