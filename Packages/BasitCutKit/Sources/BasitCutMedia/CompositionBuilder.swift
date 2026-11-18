@@ -58,7 +58,7 @@ public enum CompositionBuilder {
             composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
         }
 
-        let renderSize = evenSize(firstSource.orientedSize.cgSize)
+        let renderSize = (project.renderSize ?? firstSource.orientedSize).cgSize
 
         // Insert media.
         var transforms: [Clip.ID: CGAffineTransform] = [:]
@@ -115,6 +115,40 @@ public enum CompositionBuilder {
         )
     }
 
+    /// A plain composition for passthrough export: one video and one audio
+    /// track, clips back to back, and the shared rotation stored as the track's
+    /// `preferredTransform` (nothing is rendered, so no video composition).
+    /// Only valid when `ExportPlan.canPassthrough(project)` is true.
+    public static func buildPassthrough(
+        project: Project,
+        assets: [MediaSource.ID: AVAsset]
+    ) async throws -> AVComposition {
+        let layout = TimelineLayout(project: project)
+        guard let reference = project.referenceSource else { throw CompositionError.emptyTimeline }
+
+        let composition = AVMutableComposition()
+        guard let video = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid),
+              let audio = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
+        else { throw CompositionError.emptyTimeline }
+        video.preferredTransform = reference.transform.cgAffineTransform
+
+        for item in layout.items {
+            guard let source = project.source(id: item.clip.sourceID), let asset = assets[source.id] else {
+                throw CompositionError.missingSource(project.source(id: item.clip.sourceID)?.displayName ?? "unknown")
+            }
+            guard let sourceVideo = try await asset.loadTracks(withMediaType: .video).first else {
+                throw CompositionError.noVideoTrack(source.displayName)
+            }
+            let at = item.start.cmTime
+            try video.insertTimeRange(try await clamped(item.clip.sourceRange.cmTimeRange, to: sourceVideo), of: sourceVideo, at: at)
+            if let sourceAudio = try await asset.loadTracks(withMediaType: .audio).first {
+                try audio.insertTimeRange(try await clamped(item.clip.sourceRange.cmTimeRange, to: sourceAudio), of: sourceAudio, at: at)
+            }
+        }
+        if audio.segments.isEmpty { composition.removeTrack(audio) }
+        return composition
+    }
+
     /// Rotates a source upright (`preferredTransform`) and fits it centered
     /// into `renderSize`, keeping its aspect ratio.
     static func layerTransform(for source: MediaSource, renderSize: CGSize) -> CGAffineTransform {
@@ -128,11 +162,6 @@ public enum CompositionBuilder {
                 translationX: (renderSize.width - oriented.width * scale) / 2,
                 y: (renderSize.height - oriented.height * scale) / 2
             ))
-    }
-
-    /// Video encoders need even dimensions.
-    static func evenSize(_ size: CGSize) -> CGSize {
-        CGSize(width: (size.width / 2).rounded() * 2, height: (size.height / 2).rounded() * 2)
     }
 
     /// Keeps `range` inside the track; a track can be a few ms shorter than the asset.

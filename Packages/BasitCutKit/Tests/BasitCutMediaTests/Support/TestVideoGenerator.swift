@@ -13,6 +13,9 @@ enum TestVideoGenerator {
         var transform: CGAffineTransform = .identity
         var withAudio = true
         var creationDate: Date?
+        /// ISO 6709 location, e.g. "+48.8566+002.3522/".
+        var location: String?
+        var model: String?
         var fileName = "test-\(UUID().uuidString).mov"
     }
 
@@ -52,12 +55,21 @@ enum TestVideoGenerator {
             audio = input
         }
 
-        if let date = spec.creationDate {
+        // Written like a phone does: QuickTime metadata keys.
+        var metadata: [AVMetadataItem] = []
+        func add(_ identifier: AVMetadataIdentifier, _ value: String) {
             let item = AVMutableMetadataItem()
-            item.identifier = .commonIdentifierCreationDate
-            item.value = ISO8601DateFormatter().string(from: date) as NSString
-            writer.metadata = [item]
+            item.identifier = identifier
+            item.value = value as NSString
+            item.dataType = kCMMetadataBaseDataType_UTF8 as String
+            metadata.append(item)
         }
+        if let date = spec.creationDate {
+            add(.quickTimeMetadataCreationDate, ISO8601DateFormatter().string(from: date))
+        }
+        if let location = spec.location { add(.quickTimeMetadataLocationISO6709, location) }
+        if let model = spec.model { add(.quickTimeMetadataModel, model) }
+        writer.metadata = metadata
 
         guard writer.startWriting() else { throw GeneratorError.writeFailed(writer.error) }
         writer.startSession(atSourceTime: .zero)
