@@ -38,9 +38,16 @@ struct TimelineView: View {
 
         ScrollView(.horizontal) {
             ZStack(alignment: .topLeading) {
+                // The background spans the whole content, so dragging anywhere
+                // that isn't a clip (ruler, gaps, empty track) scrubs.
                 Color.clear
                     .frame(width: contentWidth, height: height)
                     .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.space))
+                            .onChanged { session.playback.seek(to: $0.location.x / pps, exact: false) }
+                            .onEnded { session.playback.seek(to: $0.location.x / pps, exact: true) }
+                    )
 
                 ruler(pps: pps, duration: layout.duration.seconds)
 
@@ -116,12 +123,9 @@ struct TimelineView: View {
         return RulerView(startX: start, pointsPerSecond: pps, duration: duration)
             .frame(width: width, height: rulerHeight)
             .offset(x: start)
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.space))
-                    .onChanged { session.playback.seek(to: $0.location.x / pps, exact: false) }
-                    .onEnded { session.playback.seek(to: $0.location.x / pps, exact: true) }
-            )
+            // Drawing only. Its hit area wouldn't follow `.offset`, so
+            // scrubbing is handled by the full-width background instead.
+            .allowsHitTesting(false)
     }
 
     @ViewBuilder
