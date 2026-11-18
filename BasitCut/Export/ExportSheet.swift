@@ -131,7 +131,12 @@ struct ExportSheet: View {
         panel.allowedContentTypes = [.quickTimeMovie]
         panel.nameFieldStringValue = defaultName + ".mov"
         panel.canCreateDirectories = true
+        // Exports usually go to the same place: open where the last one went.
+        // (No existence check: the sandbox may hide the folder from the app,
+        // and the panel itself falls back if it's gone.)
+        panel.directoryURL = ExportController.lastDirectory
         guard panel.runModal() == .OK, let url = panel.url else { return }
+        ExportController.lastDirectory = url.deletingLastPathComponent()
         session.startExport(to: url)
     }
 }

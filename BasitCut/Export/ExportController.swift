@@ -15,7 +15,10 @@ final class ExportController {
         case failed(String)
     }
 
-    var mode: ExportMode = .original
+    /// The last used mode is remembered across exports and launches.
+    var mode: ExportMode = ExportController.savedMode {
+        didSet { UserDefaults.standard.set(mode.rawValue, forKey: Self.modeKey) }
+    }
     private(set) var phase: Phase = .idle
 
     @ObservationIgnored private var task: Task<Void, Never>?
@@ -51,6 +54,21 @@ final class ExportController {
                 self?.phase = .failed(error.localizedDescription)
             }
         }
+    }
+
+    // MARK: Remembered choices
+
+    private static let modeKey = "exportMode"
+    private static let directoryKey = "lastExportDirectory"
+
+    private static var savedMode: ExportMode {
+        UserDefaults.standard.string(forKey: modeKey).flatMap(ExportMode.init(rawValue:)) ?? .original
+    }
+
+    /// Folder of the last export, where the save panel opens next time.
+    static var lastDirectory: URL? {
+        get { UserDefaults.standard.url(forKey: directoryKey) }
+        set { UserDefaults.standard.set(newValue, forKey: directoryKey) }
     }
 
     func cancel() {
