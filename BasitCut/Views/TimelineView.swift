@@ -41,10 +41,6 @@ struct TimelineView: View {
                 Color.clear
                     .frame(width: contentWidth, height: height)
                     .contentShape(Rectangle())
-                    .onTapGesture(coordinateSpace: .named(Self.space)) { location in
-                        session.selectedClipID = nil
-                        session.playback.seek(to: location.x / pps, exact: true)
-                    }
 
                 ruler(pps: pps, duration: layout.duration.seconds)
 
@@ -62,6 +58,14 @@ struct TimelineView: View {
                 playhead(pps: pps, height: height)
             }
             .coordinateSpace(.named(Self.space))
+            // One click handler for the whole timeline, so a click seeks no
+            // matter what it lands on (clip body, trim handle, empty track).
+            // It runs alongside the drag gestures and fails if the mouse moves.
+            .simultaneousGesture(
+                SpatialTapGesture(coordinateSpace: .named(Self.space)).onEnded { value in
+                    handleClick(at: value.location, layout: layout, pps: pps)
+                }
+            )
         }
         .scrollPosition($scrollPosition)
         .onScrollGeometryChange(for: ClosedRange<Double>.self) { geometry in
@@ -156,10 +160,6 @@ struct TimelineView: View {
             .offset(x: sliceStart + dragOffset, y: trackTop)
             .opacity(dragOffset != 0 ? 0.8 : 1)
             .zIndex(dragOffset != 0 ? 1 : 0)
-            .onTapGesture(coordinateSpace: .named(Self.space)) { location in
-                session.selectedClipID = item.clip.id
-                session.playback.seek(to: location.x / pps, exact: true)
-            }
             .gesture(
                 DragGesture(minimumDistance: 6)
                     .onChanged { value in
@@ -192,6 +192,22 @@ struct TimelineView: View {
         .allowsHitTesting(false)
     }
 
+    // MARK: Clicks
+
+    private func handleClick(at location: CGPoint, layout: TimelineLayout, pps: Double) {
+        let time = max(0, location.x / pps)
+        if location.y >= trackTop, location.y <= trackTop + trackHeight {
+            let rational = RationalTime(seconds: time, preferredTimescale: 1_000_000)
+            session.selectedClipID = layout.item(at: rational)?.clip.id
+        } else if location.y > trackTop + trackHeight {
+            session.selectedClipID = nil
+        }
+        // A quick tolerant seek shows a nearby frame at once; the exact seek
+        // queued behind it lands on the precise frame.
+        session.playback.seek(to: time, exact: false)
+        session.playback.seek(to: time, exact: true)
+    }
+
     // MARK: Reorder geometry
 
     /// Final index of the dragged clip: how many other clips have their centre
@@ -218,11 +234,14 @@ struct TimelineView: View {
             : remaining.duration.seconds * pps
     }
 
+    /// Scrolls only when the playhead leaves the visible area (playback, arrow
+    /// keys), never for a click inside the view, so the timeline doesn't jump
+    /// under the mouse.
     private func keepPlayheadVisible(x: Double) {
         guard reorder == nil, trim == nil else { return }
         let width = visible.upperBound - visible.lowerBound
         guard width > 0 else { return }
-        if x > visible.upperBound - 20 {
+        if x > visible.upperBound {
             scrollPosition.scrollTo(x: max(0, x - 40))
         } else if x < visible.lowerBound {
             scrollPosition.scrollTo(x: max(0, x - width + 40))
