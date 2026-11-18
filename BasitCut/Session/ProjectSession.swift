@@ -12,6 +12,17 @@ struct AppAlert: Identifiable {
     var message: String
 }
 
+/// Imported sources waiting for the user's decision because some of them
+/// differ in format from the project.
+struct PendingImport: Identifiable {
+    let id = UUID()
+    var sources: [MediaSource]
+    /// The subset of `sources` that matches the project's format.
+    var matching: [MediaSource]
+    var insertionIndex: Int?
+    var message: String
+}
+
 /// Everything one open project window needs: the editor (owned by the
 /// document), resolved media, playback, selection and UI state.
 ///
@@ -31,6 +42,7 @@ final class ProjectSession {
     var isImporterPresented = false
     private(set) var isImporting = false
     var alert: AppAlert?
+    var pendingImport: PendingImport?
     private(set) var compositionError: String?
 
     @ObservationIgnored private var rebuildTask: Task<Void, Never>?
@@ -96,38 +108,60 @@ final class ProjectSession {
             }
         }
 
-        let warnings = formatWarnings(for: imported)
-        if !imported.isEmpty {
-            let insertionIndex = selectedClipID.flatMap { project.clipIndex(id: $0) }.map { $0 + 1 }
-            let ids = editor.perform(imported.count == 1 ? "Import Clip" : "Import Clips") { project in
-                (try? TimelineEditor.insertClips(for: imported, at: insertionIndex, in: &project)) ?? []
-            }
-            selectedClipID = ids.last
+        let insertionIndex = selectedClipID.flatMap { project.clipIndex(id: $0) }.map { $0 + 1 }
+        let failureText = failures.joined(separator: "\n\n")
+        let (matching, warnings) = formatCheck(for: imported)
+
+        if !warnings.isEmpty {
+            // Let the user decide before anything is added to the timeline.
+            var message = "All clips in a project should share the same resolution, frame rate and codec.\n\n"
+                + warnings.joined(separator: "\n")
+            if !failures.isEmpty { message += "\n\nCouldn’t be imported:\n\n" + failureText }
+            pendingImport = PendingImport(
+                sources: imported, matching: matching, insertionIndex: insertionIndex, message: message
+            )
+            return
         }
 
+        insert(imported, at: insertionIndex)
         if !failures.isEmpty {
             alert = AppAlert(
                 title: failures.count == 1 ? "A file couldn’t be imported" : "\(failures.count) files couldn’t be imported",
-                message: failures.joined(separator: "\n\n")
-            )
-        } else if !warnings.isEmpty {
-            alert = AppAlert(
-                title: "Different video format",
-                message: "All clips in a project should share the same resolution, frame rate and codec.\n\n"
-                    + warnings.joined(separator: "\n")
+                message: failureText
             )
         }
     }
 
-    /// Compares new sources against the project's first clip (or the first new source).
-    private func formatWarnings(for newSources: [MediaSource]) -> [String] {
-        let reference = project.clips.first.flatMap { project.source(id: $0.sourceID) } ?? newSources.first
-        guard let reference else { return [] }
-        return newSources.compactMap { source in
-            let differences = source.formatDifferences(comparedTo: reference)
-            guard !differences.isEmpty else { return nil }
-            return "• \(source.displayName): " + differences.map(Self.describe).joined(separator: ", ")
+    /// Resolves a pending import: inserts all sources, or only those that match.
+    func resolve(_ pending: PendingImport, includeDifferent: Bool) {
+        pendingImport = nil
+        insert(includeDifferent ? pending.sources : pending.matching, at: pending.insertionIndex)
+    }
+
+    private func insert(_ sources: [MediaSource], at index: Int?) {
+        guard !sources.isEmpty else { return }
+        let ids = editor.perform(sources.count == 1 ? "Import Clip" : "Import Clips") { project in
+            (try? TimelineEditor.insertClips(for: sources, at: index, in: &project)) ?? []
         }
+        selectedClipID = ids.last
+    }
+
+    /// Compares new sources against the project's first clip (or the first new
+    /// source). Returns the matching sources and one warning line per different one.
+    private func formatCheck(for newSources: [MediaSource]) -> (matching: [MediaSource], warnings: [String]) {
+        let reference = project.clips.first.flatMap { project.source(id: $0.sourceID) } ?? newSources.first
+        guard let reference else { return (newSources, []) }
+        var matching: [MediaSource] = []
+        var warnings: [String] = []
+        for source in newSources {
+            let differences = source.formatDifferences(comparedTo: reference)
+            if differences.isEmpty {
+                matching.append(source)
+            } else {
+                warnings.append("• \(source.displayName): " + differences.map(Self.describe).joined(separator: ", "))
+            }
+        }
+        return (matching, warnings)
     }
 
     private static func describe(_ difference: FormatDifference) -> String {

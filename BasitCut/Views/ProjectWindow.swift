@@ -54,6 +54,19 @@ struct ProjectWindow: View {
         } message: { alert in
             Text(alert.message)
         }
+        .alert(
+            "Different video format",
+            isPresented: Binding(get: { session.pendingImport != nil }, set: { if !$0 { session.pendingImport = nil } }),
+            presenting: session.pendingImport
+        ) { pending in
+            Button("Import All") { session.resolve(pending, includeDifferent: true) }
+            if !pending.matching.isEmpty {
+                Button("Skip Different Clips") { session.resolve(pending, includeDifferent: false) }
+            }
+            Button("Cancel", role: .cancel) { session.pendingImport = nil }
+        } message: { pending in
+            Text(pending.message)
+        }
         .background(WindowAccessor { session.keyboard.attach(to: $0) })
         .focusedSceneValue(\.projectSession, session)
         .onAppear {
