@@ -2,53 +2,57 @@ import SwiftUI
 import UniformTypeIdentifiers
 import BasitCutCore
 
-/// Placeholder on-disk representation. Replaced by `BasitCutCore.Project` in Phase 1.
-struct ProjectFile: Codable, Equatable, Sendable {
-    var formatVersion: Int = BasitCutCore.projectFormatVersion
-}
-
 /// A basit-cut project document, stored as a `.basitcut` package.
 ///
 /// The package only holds references to source videos and edit decisions;
-/// source files are never written.
-final class ProjectDocument: ReferenceFileDocument, @unchecked Sendable {
-    static let projectFileName = "project.json"
+/// source files are never written. All edits go through `editor`, whose undo
+/// registrations mark the document as edited and trigger autosave.
+@MainActor
+final class ProjectDocument: ReferenceFileDocument {
+    nonisolated static let projectFileName = "project.json"
 
-    static var readableContentTypes: [UTType] { [.basitCutProject] }
+    nonisolated static var readableContentTypes: [UTType] { [.basitCutProject] }
 
-    @Published var project: ProjectFile
+    let editor: ProjectEditor
 
-    init() {
-        project = ProjectFile()
+    nonisolated init() {
+        editor = ProjectEditor()
     }
 
-    required init(configuration: ReadConfiguration) throws {
-        project = try Self.decode(configuration.file)
+    nonisolated required init(configuration: ReadConfiguration) throws {
+        editor = ProjectEditor(project: try Self.decode(configuration.file))
     }
 
-    func snapshot(contentType: UTType) throws -> ProjectFile {
-        project
+    nonisolated func snapshot(contentType: UTType) throws -> Project {
+        MainActor.assumeIsolated { editor.project }
     }
 
-    func fileWrapper(snapshot: ProjectFile, configuration: WriteConfiguration) throws -> FileWrapper {
+    nonisolated func fileWrapper(snapshot: Project, configuration: WriteConfiguration) throws -> FileWrapper {
         try Self.encode(snapshot)
     }
 
     // MARK: Package I/O
 
-    static func encode(_ project: ProjectFile) throws -> FileWrapper {
+    nonisolated static func encode(_ project: Project) throws -> FileWrapper {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
         let json = FileWrapper(regularFileWithContents: try encoder.encode(project))
         return FileWrapper(directoryWithFileWrappers: [projectFileName: json])
     }
 
-    static func decode(_ package: FileWrapper) throws -> ProjectFile {
+    nonisolated static func decode(_ package: FileWrapper) throws -> Project {
         guard package.isDirectory,
               let data = package.fileWrappers?[projectFileName]?.regularFileContents
         else {
             throw CocoaError(.fileReadCorruptFile)
         }
-        return try JSONDecoder().decode(ProjectFile.self, from: data)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let project = try decoder.decode(Project.self, from: data)
+        guard project.formatVersion <= Project.currentFormatVersion else {
+            throw CocoaError(.fileReadUnsupportedScheme)
+        }
+        return project
     }
 }
