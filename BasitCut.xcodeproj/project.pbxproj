@@ -31,7 +31,6 @@
 		BC0000000000000000000701 /* Exceptions for "BasitCut" folder in "BasitCut" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Resources/BasitCut.entitlements,
 				Resources/Info.plist,
 			);
 			target = BC0000000000000000000501 /* BasitCut */;
