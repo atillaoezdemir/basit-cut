@@ -16,11 +16,13 @@ struct RulerView: View {
         Canvas { context, size in
             let major = majorInterval
             let minor = major / 5
-            let firstTick = (startX / pointsPerSecond / minor).rounded(.down) * minor
-            var time = firstTick
-            while time * pointsPerSecond - startX <= size.width {
+            // Count ticks with an integer index: adding `minor` repeatedly
+            // drifts and produces labels like 0:03.9.
+            var index = Int((startX / pointsPerSecond / minor).rounded(.down))
+            while Double(index) * minor * pointsPerSecond - startX <= size.width {
+                let time = Double(index) * minor
                 let x = time * pointsPerSecond - startX
-                let isMajor = abs((time / major).rounded() * major - time) < 0.0001
+                let isMajor = index.isMultiple(of: 5)
                 let tickHeight = isMajor ? size.height * 0.5 : size.height * 0.25
                 context.fill(
                     Path(CGRect(x: x, y: size.height - tickHeight, width: 1, height: tickHeight)),
@@ -35,7 +37,7 @@ struct RulerView: View {
                         anchor: .topLeading
                     )
                 }
-                time += minor
+                index += 1
             }
         }
     }

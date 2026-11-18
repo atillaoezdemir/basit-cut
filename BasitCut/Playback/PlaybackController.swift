@@ -18,9 +18,15 @@ final class PlaybackController {
     private(set) var isFastForwarding = false
 
     /// The time the user asked for; ahead of the player while a seek is pending.
-    var displayTime: Double { seekTarget ?? currentTime }
+    var displayTime: Double {
+        // Read both properties unconditionally: a view must depend on both, or
+        // it would stop updating after being drawn while a seek was pending.
+        let target = seekTarget
+        let current = currentTime
+        return target ?? current
+    }
 
-    @ObservationIgnored private var seekTarget: Double?
+    private var seekTarget: Double?
     @ObservationIgnored private var seekInFlight = false
     @ObservationIgnored private var queuedSeek: (time: Double, exact: Bool)?
     @ObservationIgnored private var wasPausedBeforeFastForward = false
@@ -156,6 +162,8 @@ final class PlaybackController {
             queuedSeek = nil
             performSeek(to: next.time, exact: next.exact)
         } else {
+            let time = player.currentTime()
+            if time.isNumeric { currentTime = time.seconds }
             seekTarget = nil
         }
     }
