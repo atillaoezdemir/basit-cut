@@ -105,6 +105,15 @@ struct ProjectWindow: View {
             } else {
                 PlayerView(player: session.playback.player)
             }
+            if let message = session.flashMessage {
+                Label(message, systemImage: "photo")
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(.regularMaterial, in: Capsule())
+                    .transition(.opacity)
+                    .frame(maxHeight: .infinity, alignment: .bottom)
+                    .padding(.bottom, 16)
+            }
             if session.isImporting {
                 ProgressView("Importing…")
                     .padding()
@@ -112,5 +121,6 @@ struct ProjectWindow: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .animation(.easeInOut(duration: 0.2), value: session.flashMessage)
     }
 }

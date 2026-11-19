@@ -35,6 +35,9 @@ struct TransportBar: View {
                 .help("Delete Selected Clips (⌫)")
                 .disabled(session.selection.isEmpty)
 
+            Button("Cover", systemImage: session.project.cover == nil ? "photo" : "photo.fill") { session.setCoverAtPlayhead() }
+                .help("Set Current Frame as Cover (⇧⌘K)")
+
             Button("Export", systemImage: "square.and.arrow.up") { session.showExport() }
                 .help("Export (⌘E)")
                 .disabled(!session.canExport)

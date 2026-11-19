@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import BasitCutCore
 
 /// The launch window: lists the projects in the projects folder and creates
 /// new ones there, so no location ever has to be picked per project.
@@ -10,6 +11,7 @@ struct ProjectsWindow: View {
     @State private var selection: ProjectEntry.ID?
     @State private var isNamingNewProject = false
     @State private var newName = ""
+    @State private var newAspectRatio: CropSetting.Mode = .original
     @State private var pendingTrash: ProjectEntry?
     @State private var errorMessage: String?
     @Environment(\.openDocument) private var openDocument
@@ -139,6 +141,17 @@ struct ProjectsWindow: View {
             TextField("Name", text: $newName)
                 .textFieldStyle(.roundedBorder)
                 .onSubmit(createProject)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Aspect ratio")
+                Picker("Aspect ratio", selection: $newAspectRatio) {
+                    ForEach(CropSetting.Mode.allCases.filter { $0 != .free }, id: \.self) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                Text("Can be changed and positioned later in the export dialog.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             HStack {
                 Spacer()
                 Button("Cancel", role: .cancel) { isNamingNewProject = false }
@@ -165,7 +178,7 @@ struct ProjectsWindow: View {
 
     private func createProject() {
         isNamingNewProject = false
-        perform { open(try folder.createProject(named: newName)) }
+        perform { open(try folder.createProject(named: newName, crop: newAspectRatio)) }
     }
 
     private func open(_ url: URL) {

@@ -3,11 +3,18 @@ import SwiftUI
 import UniformTypeIdentifiers
 import BasitCutCore
 
+private struct CoverKey: Equatable {
+    var cover: CoverFrame?
+    var crop: CropSetting
+}
+
 /// The export dialog: mode, summary, output location, progress and cancel.
 struct ExportSheet: View {
     @Bindable var session: ProjectSession
     let defaultName: String
     @Environment(\.dismiss) private var dismiss
+    @State private var isCropEditorPresented = false
+    @State private var coverThumbnail: CGImage?
 
     private var export: ExportController { session.export }
 
@@ -27,8 +34,12 @@ struct ExportSheet: View {
             }
         }
         .padding(20)
-        .frame(width: 440)
+        .frame(width: 500)
         .interactiveDismissDisabled(export.isExporting)
+        .sheet(isPresented: $isCropEditorPresented) { CropEditor(session: session) }
+        .task(id: CoverKey(cover: session.project.cover, crop: session.project.crop)) {
+            coverThumbnail = await session.coverThumbnail()
+        }
     }
 
     // MARK: Phases
@@ -46,6 +57,8 @@ struct ExportSheet: View {
                  ? "Same codec, resolution, frame rate and bitrate as the source."
                  : "HEVC at up to 4000 kbps, at most 1080p. Much smaller files.")
                 .foregroundStyle(.secondary)
+
+            framing
 
             if let summary = export.summary(for: session.project, mode: export.mode) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -71,6 +84,48 @@ struct ExportSheet: View {
                 Button("Export…") { chooseDestination() }
                     .keyboardShortcut(.defaultAction)
                     .disabled(session.project.clips.isEmpty)
+            }
+        }
+    }
+
+    /// Aspect ratio / crop and cover: project settings, also changeable here.
+    private var framing: some View {
+        Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 10) {
+            GridRow {
+                Text("Aspect ratio").gridColumnAlignment(.trailing)
+                HStack {
+                    Picker("Aspect ratio", selection: Binding(
+                        get: { session.project.crop.mode },
+                        set: { session.setCropMode($0) }
+                    )) {
+                        ForEach(CropSetting.Mode.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    Button("Adjust…") { isCropEditorPresented = true }
+                        .disabled(session.project.crop.mode == .original)
+                }
+            }
+            GridRow {
+                Text("Cover")
+                HStack(spacing: 10) {
+                    if session.project.cover != nil {
+                        Group {
+                            if let coverThumbnail {
+                                Image(decorative: coverThumbnail, scale: 1).resizable().scaledToFit()
+                            } else {
+                                Color.secondary.opacity(0.2)
+                            }
+                        }
+                        .frame(width: 64, height: 40)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                        Button("Remove") { session.removeCover() }
+                    } else {
+                        Text("None. Choose a frame with Clip → Set Current Frame as Cover.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
         }
     }

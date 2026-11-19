@@ -102,6 +102,12 @@ struct ProjectCommands: Commands {
                 .disabled(!hasSelectedCuts)
             Button("Remove Transition") { session?.setTransitionKindForSelectedCuts(nil) }
                 .disabled(session?.selectedCutsHaveTransition != true)
+            Divider()
+            Button("Set Current Frame as Cover") { session?.setCoverAtPlayhead() }
+                .keyboardShortcut("k", modifiers: [.command, .shift])
+                .disabled(session?.project.clips.isEmpty != false)
+            Button("Remove Cover") { session?.removeCover() }
+                .disabled(session?.project.cover == nil)
         }
         CommandGroup(after: .toolbar) {
             Button("Zoom In") { session?.zoom(by: 1.5) }

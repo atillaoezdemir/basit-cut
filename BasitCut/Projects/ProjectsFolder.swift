@@ -1,5 +1,6 @@
 import AppKit
 import Observation
+import BasitCutCore
 import BasitCutMedia
 
 /// The folder where all projects live, chosen once by the user (and changeable
@@ -52,9 +53,9 @@ final class ProjectsFolder {
     }
 
     /// Creates an empty project in the folder and returns its URL.
-    func createProject(named name: String) throws -> URL {
+    func createProject(named name: String, crop: CropSetting.Mode) throws -> URL {
         guard let url else { throw CocoaError(.fileNoSuchFile) }
-        let created = try ProjectListing.createProject(named: name, in: url)
+        let created = try ProjectListing.createProject(named: name, crop: crop, in: url)
         refresh()
         return created
     }

@@ -323,6 +323,70 @@ final class ProjectSession {
         }
     }
 
+    // MARK: Crop
+
+    /// Switches the crop mode. Fixed ratios start as the largest centered
+    /// area; free crop starts from the current area.
+    func setCropMode(_ mode: CropSetting.Mode) {
+        guard mode != project.crop.mode else { return }
+        editor.perform("Change Aspect Ratio") { project in
+            project.crop = project.canvasSize.map {
+                CropGeometry.setting(for: mode, canvas: $0, current: project.crop.rect)
+            } ?? CropSetting(mode: mode)
+        }
+    }
+
+    func setCrop(_ crop: CropSetting) {
+        guard crop != project.crop else { return }
+        editor.perform("Change Crop") { $0.crop = crop }
+    }
+
+    /// The frame at the playhead without the crop, for the crop editor.
+    func uncroppedFrame() async -> CGImage? {
+        var uncropped = project
+        uncropped.crop = .original
+        let assets: [MediaSource.ID: AVAsset] = library.assets
+        guard let built = try? await CompositionBuilder.build(project: uncropped, assets: assets) else { return nil }
+        let generator = AVAssetImageGenerator(asset: built.composition)
+        generator.videoComposition = built.videoComposition
+        generator.maximumSize = CGSize(width: 1600, height: 1600)
+        let time = CMTime(seconds: min(playback.displayTime, max(0, built.layout.duration.seconds - 0.05)), preferredTimescale: 600)
+        return try? await generator.image(at: time).image
+    }
+
+    // MARK: Cover
+
+    /// Shown briefly over the preview (e.g. "Cover set").
+    private(set) var flashMessage: String?
+    @ObservationIgnored private var flashTask: Task<Void, Never>?
+
+    func setCoverAtPlayhead() {
+        guard let cover = TimelineEditor.coverFrame(at: playheadTime, in: project) else { return }
+        editor.perform("Set Cover") { $0.cover = cover }
+        flash("Cover set to this frame")
+    }
+
+    func removeCover() {
+        guard project.cover != nil else { return }
+        editor.perform("Remove Cover") { $0.cover = nil }
+    }
+
+    /// The cover as it will be embedded (with the crop), small, for display.
+    func coverThumbnail() async -> CGImage? {
+        let assets: [MediaSource.ID: AVAsset] = library.assets
+        return try? await CoverImage.render(project: project, assets: assets, maxDimension: 320)
+    }
+
+    private func flash(_ message: String) {
+        flashMessage = message
+        flashTask?.cancel()
+        flashTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1.6))
+            guard !Task.isCancelled else { return }
+            self?.flashMessage = nil
+        }
+    }
+
     /// The playhead as exact time (microsecond precision before frame snapping).
     var playheadTime: RationalTime {
         RationalTime(seconds: playback.displayTime, preferredTimescale: 1_000_000)

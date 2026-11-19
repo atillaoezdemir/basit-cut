@@ -50,7 +50,7 @@ struct Project {
     var sources: [MediaSource]                     // referenced files, never modified
     var clips: [Clip]                              // timeline order = array order
     var crop: CropSetting                          // project-wide
-    var cover: CoverFrame?                         // source + time; image stored in the package
+    var cover: CoverFrame?                         // source + time; rendered when exporting
 }
 
 struct MediaSource {
@@ -123,7 +123,6 @@ A `.basitcut` file is a **package** (a directory that Finder shows as one file) 
 ```
 MyTrip.basitcut/
   project.json      Project: references + edit decisions only
-  cover.jpg         optional cover frame
 ```
 
 `ProjectDocument` is a SwiftUI `ReferenceFileDocument` inside a `DocumentGroup`. Each project gets its own window, with no tabs and no limit on open projects. Autosave and versions come from macOS, because every edit is registered with the UndoManager.
@@ -157,7 +156,13 @@ The same `BuiltComposition` feeds both the `AVPlayerItem` (preview) and the `Exp
   - *single clip:* the one layer at full opacity;
   - *cross fade:* B (on top) ramps from 0 to 1 over the overlap while A stays opaque underneath;
   - *black fade:* A ramps to 0 over its last half and B from 0 over its first half, over the black background.
-- **Geometry:** each layer instruction applies the source's `preferredTransform` (rotation) followed by the project crop transform. `renderSize` is the cropped, oriented size, so portrait phone videos are never shown sideways.
+- **Geometry:** each layer instruction rotates the source upright (`preferredTransform`), fits it into the **canvas** (the first clip's upright frame), then shifts it by the crop origin. `renderSize` is the crop size, so the preview shows exactly what will be exported, and portrait phone videos are never shown sideways.
+
+### Crop and cover
+
+- **Crop** (`Crop.swift` in Core): `CropSetting.rect` is normalized (0…1, top-left origin) in the canvas. Fixed ratios (16:9, 9:16, 1:1) keep their ratio in pixels whatever the canvas shape; free crop is only clamped to the frame and a minimum side of 10 %. `Project.cropRect` turns it into canvas pixels with an even width and height, and `renderSize` follows it. A ratio picked before the project has clips (in the New Project sheet) starts as `.full` and is centred once the first clip defines the canvas.
+- The crop is set in two places only, as the spec asks: the New Project sheet (ratio only) and the export dialog (ratio, plus a crop editor over the uncropped frame at the playhead). It is a project setting, so changing it in the export dialog is undoable and also changes the preview.
+- **Cover:** the project stores only the source frame (`CoverFrame`: source + source time). `CoverImage` renders it at export time with the same fitting and the current crop, so it always matches the video, and it is embedded as `quickTimeMetadataArtwork` (JPEG, at most 1920 px on the long side). If the source is missing, the export goes ahead without a cover.
 - **Audio mix,** automatic with no UI: a 15 ms fade out/in at hard cuts to avoid clicks, a linear audio crossfade during cross fades, and fades that follow the video during black fades. Each audio track gets the volume ramps of its clips plus an explicit start volume: without it the mixer plays a fade-in's first buffer at full volume, because it only notices a ramp at its next buffer boundary.
 - **Passthrough export** copies audio as is, so the hard-cut fades don't apply there (the accepted trade-off from the open question below).
 
@@ -187,7 +192,7 @@ The output is always a QuickTime movie (`.mov`), the container that keeps phone 
 - **Passthrough:** a separate single-track composition (clips back to back, the shared rotation as the track's `preferredTransform`) exported with `AVAssetExportSession` and the passthrough preset. Edit lists keep the cuts frame-exact without re-encoding.
 - **Re-encode:** the preview's `BuiltComposition` is read with `AVAssetReaderVideoCompositionOutput` and `AVAssetReaderAudioMixOutput`, and encoded with `AVAssetWriter` using explicit codec and bitrate settings (export-session presets can't set a bitrate). Frames are rendered at the composition's size and scaled by the encoder for space saving. Audio is mixed to 48 kHz stereo AAC.
 - **Progress** is reported through a callback. **Cancel** works through task cancellation, and the partial output file is deleted.
-- **Metadata:** creation date, location (ISO 6709, plus its accuracy), and make/model/software are copied from the **first clip** (capture-specific identifiers such as the Live Photo content identifier are not). If the file has no creation date but the inspector found one, that date is written. The output file's creation and modification dates are set to the recording date, so Finder doesn't show it as "today". The cover image (Phase 4) will be embedded as `commonIdentifierArtwork`.
+- **Metadata:** creation date, location (ISO 6709, plus its accuracy), and make/model/software are copied from the **first clip** (capture-specific identifiers such as the Live Photo content identifier are not). If the file has no creation date but the inspector found one, that date is written. The output file's creation and modification dates are set to the recording date, so Finder doesn't show it as "today". The cover image, if set, is embedded as `quickTimeMetadataArtwork`, in passthrough and re-encode alike.
 
 ## Concurrency
 

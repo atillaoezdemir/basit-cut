@@ -18,6 +18,12 @@ struct ProjectListingTests {
         #expect(try ProjectDocument.decode(wrapper) == Project())
     }
 
+    @Test func newProjectKeepsTheChosenAspectRatio() throws {
+        let url = try ProjectListing.createProject(named: "Reel", crop: .ratio9x16, in: folder)
+        let project = try ProjectDocument.decode(try FileWrapper(url: url))
+        #expect(project.crop.mode == .ratio9x16)
+    }
+
     @Test func newNamesNeverOverwrite() throws {
         _ = try ProjectListing.createProject(named: "Trip", in: folder)
         _ = try ProjectListing.createProject(named: "Trip", in: folder)

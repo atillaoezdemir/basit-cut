@@ -59,10 +59,12 @@ enum ProjectListing {
         return candidate
     }
 
-    /// Writes an empty project named after `name` (made unique) into `folder`.
-    static func createProject(named name: String, in folder: URL) throws -> URL {
+    /// Writes an empty project named after `name` (made unique) into `folder`,
+    /// with the chosen aspect ratio.
+    static func createProject(named name: String, crop: CropSetting.Mode = .original, in folder: URL) throws -> URL {
         let url = url(for: availableName(name, in: folder), in: folder)
-        try ProjectDocument.encode(Project()).write(to: url, options: [], originalContentsURL: nil)
+        // The crop area is centred once the first clip defines the frame.
+        try ProjectDocument.encode(Project(crop: CropSetting(mode: crop))).write(to: url, options: [], originalContentsURL: nil)
         return url
     }
 
