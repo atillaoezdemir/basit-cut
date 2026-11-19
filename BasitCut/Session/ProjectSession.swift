@@ -239,6 +239,35 @@ final class ProjectSession {
         try? editor.perform("Trim Clip") { try TimelineEditor.trim(clip: id, edge: edge, to: sourceTime, in: &$0) }
     }
 
+    // MARK: Transitions
+
+    /// Sets or (with `nil`) removes the transition at the cut after `clipID`.
+    /// Its duration is clamped to what the neighbouring clips allow.
+    func setTransition(_ transition: Transition?, after clipID: Clip.ID) {
+        try? editor.perform(transition == nil ? "Remove Transition" : "Set Transition") {
+            try TimelineEditor.setTransition(transition, after: clipID, in: &$0)
+        }
+    }
+
+    /// Changes the kind of the transition after `clipID`, keeping its duration.
+    func setTransitionKind(_ kind: Transition.Kind?, after clipID: Clip.ID) {
+        let current = project.clips.first { $0.id == clipID }?.outgoingTransition
+        setTransition(kind.map { Transition(kind: $0, duration: current?.duration ?? Transition.defaultDuration) }, after: clipID)
+    }
+
+    /// Longest transition of `kind` that fits the cut after `clipID`.
+    func maximumTransitionDuration(_ kind: Transition.Kind, after clipID: Clip.ID) -> RationalTime {
+        var trial = project
+        try? TimelineEditor.setTransition(Transition(kind: kind, duration: Transition.maximumDuration), after: clipID, in: &trial)
+        return trial.clips.first { $0.id == clipID }?.outgoingTransition?.duration ?? Transition.minimumDuration
+    }
+
+    /// The selected clip, if a cut follows it (menu commands act on that cut).
+    var clipBeforeSelectedCut: Clip.ID? {
+        guard let id = selectedClipID, let index = project.clipIndex(id: id), index < project.clips.count - 1 else { return nil }
+        return id
+    }
+
     /// The playhead as exact time (microsecond precision before frame snapping).
     var playheadTime: RationalTime {
         RationalTime(seconds: playback.displayTime, preferredTimescale: 1_000_000)

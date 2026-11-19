@@ -1,4 +1,5 @@
 import SwiftUI
+import BasitCutCore
 
 @main
 struct BasitCutApp: App {
@@ -72,6 +73,11 @@ struct FileCommands: Commands {
 struct ProjectCommands: Commands {
     @FocusedValue(\.projectSession) private var session
 
+    private func setTransition(_ kind: Transition.Kind?) {
+        guard let session, let id = session.clipBeforeSelectedCut else { return }
+        session.setTransitionKind(kind, after: id)
+    }
+
     var body: some Commands {
         CommandGroup(after: .importExport) {
             Button("Import Videos…") { session?.isImporterPresented = true }
@@ -88,6 +94,18 @@ struct ProjectCommands: Commands {
             Button("Delete Clip") { session?.deleteSelectedClip() }
                 .keyboardShortcut(.delete, modifiers: [])
                 .disabled(session?.selectedClipID == nil)
+            Divider()
+            // These act on the cut after the selected clip.
+            Button("Cross Fade to Next Clip") { setTransition(.crossFade) }
+                .keyboardShortcut("t", modifiers: .command)
+                .disabled(session?.clipBeforeSelectedCut == nil)
+            Button("Black Fade to Next Clip") { setTransition(.blackFade) }
+                .keyboardShortcut("t", modifiers: [.command, .option])
+                .disabled(session?.clipBeforeSelectedCut == nil)
+            Button("Remove Transition") { setTransition(nil) }
+                .disabled(session?.clipBeforeSelectedCut.flatMap { id in
+                    session?.project.clips.first { $0.id == id }?.outgoingTransition
+                } == nil)
         }
         CommandGroup(after: .toolbar) {
             Button("Zoom In") { session?.zoom(by: 1.5) }

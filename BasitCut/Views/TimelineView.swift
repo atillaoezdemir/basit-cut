@@ -13,6 +13,8 @@ struct TimelineView: View {
     @State private var reorder: ReorderDrag?
     @State private var trim: TrimDrag?
     @State private var magnifyStart: Double?
+    /// The cut (identified by the clip before it) whose transition editor is open.
+    @State private var editedCut: Clip.ID?
 
     private static let space = "timeline"
     private let rulerHeight: Double = 22
@@ -54,6 +56,8 @@ struct TimelineView: View {
                 ForEach(layout.items, id: \.clip.id) { item in
                     clipSlice(item, layout: layout, pps: pps)
                 }
+
+                cuts(layout: layout, pps: pps)
 
                 if let marker = insertionMarkerX(layout: layout, pps: pps) {
                     Rectangle().fill(Color.accentColor)
@@ -179,6 +183,34 @@ struct TimelineView: View {
                         reorder = nil
                     }
             )
+        }
+    }
+
+    /// Transition shading and the button at every cut. Hidden while dragging.
+    @ViewBuilder
+    private func cuts(layout: TimelineLayout, pps: Double) -> some View {
+        if reorder == nil {
+            let margin = 40.0
+            ForEach(CutGeometry.all(in: layout).filter {
+                $0.range.upperBound * pps >= visible.lowerBound - margin && $0.range.lowerBound * pps <= visible.upperBound + margin
+            }, id: \.clipID) { cut in
+                if let transition = cut.transition {
+                    TransitionRegion(kind: transition.kind)
+                        .frame(width: max(2, (cut.range.upperBound - cut.range.lowerBound) * pps), height: trackHeight)
+                        .offset(x: cut.range.lowerBound * pps, y: trackTop)
+                        .allowsHitTesting(false)
+                }
+                if trim == nil {
+                    CutBadge(transition: cut.transition) { editedCut = cut.clipID }
+                        .popover(isPresented: Binding(
+                            get: { editedCut == cut.clipID },
+                            set: { if !$0 { editedCut = nil } }
+                        ), arrowEdge: .bottom) {
+                            TransitionEditor(session: session, clipID: cut.clipID)
+                        }
+                        .offset(x: cut.center * pps - 10, y: trackTop + trackHeight - 24)
+                }
+            }
         }
     }
 

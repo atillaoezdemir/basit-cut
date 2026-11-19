@@ -152,12 +152,14 @@ CompositionBuilder.build(project, resolvedAssets) -> BuiltComposition {
 The same `BuiltComposition` feeds both the `AVPlayerItem` (preview) and the `Exporter`.
 
 - **Tracks:** clips alternate between two video tracks (A/B) and two audio tracks, so a cross fade overlap is simply two tracks playing at the same time.
-- **Video instructions,** one per segment:
+- **Fades are computed in Core:** `TimelineLayout.envelopes(for:)` gives each clip an opacity and a volume `Envelope` (linear `Ramp`s on the timeline), so the rules are unit-tested without AVFoundation. The builder only translates them.
+- **Video instructions,** one per segment between clip boundaries. Later clips are drawn on top, and each layer gets its opacity ramps cut to the segment:
   - *single clip:* the one layer at full opacity;
-  - *cross fade:* opacity ramp of A from 1 to 0 over B;
-  - *black fade:* opacity ramp to 0 (A) and from 0 (B) over the black background.
+  - *cross fade:* B (on top) ramps from 0 to 1 over the overlap while A stays opaque underneath;
+  - *black fade:* A ramps to 0 over its last half and B from 0 over its first half, over the black background.
 - **Geometry:** each layer instruction applies the source's `preferredTransform` (rotation) followed by the project crop transform. `renderSize` is the cropped, oriented size, so portrait phone videos are never shown sideways.
-- **Audio mix,** automatic with no UI: a ~15 ms fade out/in at hard cuts to avoid clicks, an equal-length audio crossfade during cross fades, and fades that follow the video during black fades.
+- **Audio mix,** automatic with no UI: a 15 ms fade out/in at hard cuts to avoid clicks, a linear audio crossfade during cross fades, and fades that follow the video during black fades. Each audio track gets the volume ramps of its clips plus an explicit start volume: without it the mixer plays a fade-in's first buffer at full volume, because it only notices a ramp at its next buffer boundary.
+- **Passthrough export** copies audio as is, so the hard-cut fades don't apply there (the accepted trade-off from the open question below).
 
 ## Preview & keyboard
 
