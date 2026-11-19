@@ -135,7 +135,8 @@ All projects live in one folder that the user chooses once (and can change in Se
 
 - Entitlements: `com.apple.security.app-sandbox`, `com.apple.security.files.user-selected.read-write`, `com.apple.security.files.bookmarks.app-scope`.
 - On import, each source gets an app-scoped security-scoped bookmark, which is stored in `MediaSource.bookmark`.
-- When a document opens, `BookmarkResolver` resolves the bookmarks, refreshes stale ones, and reports missing files. Missing files trigger the relink dialog (Phase 5).
+- When a document opens, `MediaLibrary` resolves the bookmarks, refreshes stale ones, and reports missing files. If the timeline or the cover uses a missing file, the relink sheet opens (also reachable from the banner and File → Relink Missing Files…).
+- **Relink:** the user locates a file, or picks a folder that is searched for all missing files by name (in the sandbox, only a picked folder grants access to its files; that access is kept while the project is open). `TimelineEditor.relink` replaces the source but keeps its ID, so clips and the cover stay attached. The new file must be at least as long as the part the project uses (`requiredDuration`); format differences only produce a warning. Relinking is an undoable edit, which also marks the document as changed so the new bookmark is saved.
 
 ## Composition: preview == export
 
