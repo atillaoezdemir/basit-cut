@@ -105,7 +105,7 @@ struct ProjectWindow: View {
                 .colorScheme(.dark)
             } else {
                 PlayerView(player: session.playback.player)
-                if let draft = session.cropDraft, let canvas = session.project.canvasSize {
+                if let draft = session.cropDraft, draft.mode != .original, let canvas = session.project.canvasSize {
                     // Laid out like the player's aspect-fit video, so the
                     // rectangle sits exactly on the uncropped frame.
                     CropOverlay(

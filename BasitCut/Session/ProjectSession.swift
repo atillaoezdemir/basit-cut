@@ -333,30 +333,21 @@ final class ProjectSession {
 
     var isEditingCrop: Bool { cropDraft != nil }
 
-    /// The crop menu: Original applies at once, a ratio or Free starts editing.
-    func chooseCropMode(_ mode: CropSetting.Mode) {
-        if mode == .original {
-            cropDraft = nil
-            setCrop(.original)
-            scheduleRebuild(delay: .zero)
-        } else {
-            beginCropEditing(mode)
-        }
+    var canCrop: Bool { !isEditingCrop && project.canvasSize != nil }
+
+    /// Starts crop editing with the project's current crop.
+    func beginCropEditing() {
+        guard !isEditingCrop, project.canvasSize != nil else { return }
+        cropDraft = project.crop
+        playback.pause()
+        scheduleRebuild(delay: .zero)
     }
 
-    /// Starts (or, during editing, switches the ratio of) the crop editing.
-    /// The current area is kept when the mode stays the same.
-    func beginCropEditing(_ mode: CropSetting.Mode) {
-        guard mode != .original, let canvas = project.canvasSize else { return }
-        let wasEditing = isEditingCrop
-        let base = cropDraft ?? project.crop
-        cropDraft = mode == base.mode
-            ? CropSetting(mode: mode, rect: CropGeometry.clamped(base.rect, mode: mode, canvas: canvas))
-            : CropGeometry.setting(for: mode, canvas: canvas, current: base.rect)
-        if !wasEditing {
-            playback.pause()
-            scheduleRebuild(delay: .zero)
-        }
+    /// Switches the ratio of the crop being edited. The current area is kept
+    /// when the mode stays the same; Original shows the whole frame.
+    func setCropDraftMode(_ mode: CropSetting.Mode) {
+        guard let draft = cropDraft, let canvas = project.canvasSize, mode != draft.mode else { return }
+        cropDraft = CropGeometry.setting(for: mode, canvas: canvas, current: draft.rect)
     }
 
     func updateCropDraft(_ rect: NormalizedRect) {

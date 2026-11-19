@@ -101,7 +101,8 @@ struct CropOverlay: View {
     }
 }
 
-/// The bar above the preview while cropping: ratio, output size, Done/Cancel.
+/// The bar above the preview while cropping: ratio (Original removes the
+/// crop), output size, Done/Cancel.
 struct CropBar: View {
     let session: ProjectSession
 
@@ -111,9 +112,9 @@ struct CropBar: View {
                 Label("Crop", systemImage: "crop").font(.headline)
                 Picker("Aspect Ratio", selection: Binding(
                     get: { draft.mode },
-                    set: { session.beginCropEditing($0) }
+                    set: { session.setCropDraftMode($0) }
                 )) {
-                    ForEach(CropSetting.Mode.allCases.filter { $0 != .original }, id: \.self) { Text($0.title).tag($0) }
+                    ForEach(CropSetting.Mode.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
@@ -125,6 +126,7 @@ struct CropBar: View {
                 }
                 Spacer()
                 Button("Reset") { session.resetCropDraft() }
+                    .disabled(draft.mode == .original)
                 Button("Cancel", role: .cancel) { session.finishCropEditing(apply: false) }
                     .keyboardShortcut(.cancelAction)
                 Button("Done") { session.finishCropEditing(apply: true) }
