@@ -8,6 +8,9 @@ struct ProjectWindow: View {
     let name: String
     @State private var session: ProjectSession
     @Environment(\.undoManager) private var undoManager
+    /// Videos usually come from the same place: the import panel opens where
+    /// the last import came from.
+    @AppStorage("lastImportDirectory") private var lastImportDirectory: URL?
 
     init(document: ProjectDocument, name: String) {
         self.document = document
@@ -45,9 +48,11 @@ struct ProjectWindow: View {
             allowsMultipleSelection: true
         ) { result in
             if case .success(let urls) = result {
+                if let first = urls.first { lastImportDirectory = first.deletingLastPathComponent() }
                 Task { await session.importFiles(urls) }
             }
         }
+        .fileDialogDefaultDirectory(lastImportDirectory)
         .alert(
             session.alert?.title ?? "",
             isPresented: Binding(get: { session.alert != nil }, set: { if !$0 { session.alert = nil } }),
