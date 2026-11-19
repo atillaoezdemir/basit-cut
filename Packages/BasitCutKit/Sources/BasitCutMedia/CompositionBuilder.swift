@@ -39,7 +39,9 @@ public enum CompositionError: LocalizedError, Equatable {
 ///
 /// Clips alternate between two video tracks (A/B) and two audio tracks, so an
 /// overlapping cross fade is just two tracks playing at once. The video
-/// composition gets one instruction per segment between clip boundaries.
+/// composition gets one instruction per segment between clip boundaries, with
+/// the opacity ramps of `TimelineLayout.envelopes(for:)`; the audio mix applies
+/// the matching volume ramps.
 public enum CompositionBuilder {
     public static func build(
         project: Project,
@@ -80,22 +82,56 @@ public enum CompositionBuilder {
             }
             transforms[item.clip.id] = layerTransform(for: source, renderSize: renderSize)
         }
-        for track in audioTracks where track.segments.isEmpty {
-            composition.removeTrack(track)
-        }
+        let envelopes = Dictionary(uniqueKeysWithValues: layout.items.map { ($0.clip.id, layout.envelopes(for: $0)) })
 
-        // One instruction per segment between clip boundaries.
+        // Audio: each track gets the volume ramps of its clips (transitions and
+        // the short fades at hard cuts). Clips on one track never overlap, and
+        // neither do their ramps.
+        var audioParameters: [AVAudioMixInputParameters] = []
+        for (trackIndex, track) in audioTracks.enumerated() {
+            guard !track.segments.isEmpty else {
+                composition.removeTrack(track)
+                continue
+            }
+            let parameters = AVMutableAudioMixInputParameters(track: track)
+            let items = layout.items.filter { $0.index % 2 == trackIndex }
+            // Without an explicit start volume the mixer plays at 1.0 until the
+            // first ramp is reached, which it only notices at its next buffer:
+            // the start of a fade-in would be audible at full volume.
+            if let first = items.first, let initial = envelopes[first.clip.id]?.volume.initialValue {
+                parameters.setVolume(Float(initial), at: .zero)
+            }
+            let ramps = items
+                .flatMap { envelopes[$0.clip.id]?.volume.ramps ?? [] }
+                .sorted { $0.range.start < $1.range.start }
+            for ramp in ramps {
+                parameters.setVolumeRamp(fromStartVolume: Float(ramp.from), toEndVolume: Float(ramp.to), timeRange: ramp.range.cmTimeRange)
+            }
+            audioParameters.append(parameters)
+        }
+        let audioMix = AVMutableAudioMix()
+        audioMix.inputParameters = audioParameters
+
+        // Video: one instruction per segment between clip boundaries. Later
+        // clips are drawn on top; fades are opacity ramps over the black
+        // background.
         let boundaries = Set(layout.items.flatMap { [$0.start, $0.end] }).sorted()
         var instructions: [AVVideoCompositionInstructionProtocol] = []
         for (segmentStart, segmentEnd) in zip(boundaries, boundaries.dropFirst()) {
             let active = layout.items.filter { $0.start < segmentEnd && $0.end > segmentStart }
             guard !active.isEmpty else { continue }
+            let segment = TimeRange(start: segmentStart, end: segmentEnd)
             let instruction = AVMutableVideoCompositionInstruction()
-            instruction.timeRange = TimeRange(start: segmentStart, end: segmentEnd).cmTimeRange
-            // Later clips are drawn on top. Opacity ramps for transitions are added in Phase 3.
+            instruction.timeRange = segment.cmTimeRange
             instruction.layerInstructions = active.reversed().map { item in
                 let layer = AVMutableVideoCompositionLayerInstruction(assetTrack: videoTracks[item.index % 2])
                 layer.setTransform(transforms[item.clip.id] ?? .identity, at: segmentStart.cmTime)
+                if let opacity = envelopes[item.clip.id]?.opacity {
+                    layer.setOpacity(Float(opacity.value(at: segmentStart)), at: segmentStart.cmTime)
+                    for ramp in opacity.ramps(in: segment) {
+                        layer.setOpacityRamp(fromStartOpacity: Float(ramp.from), toEndOpacity: Float(ramp.to), timeRange: ramp.range.cmTimeRange)
+                    }
+                }
                 return layer
             }
             instructions.append(instruction)
@@ -109,7 +145,7 @@ public enum CompositionBuilder {
         return BuiltComposition(
             composition: composition,
             videoComposition: videoComposition,
-            audioMix: nil,
+            audioMix: audioParameters.isEmpty ? nil : audioMix,
             renderSize: renderSize,
             layout: layout
         )

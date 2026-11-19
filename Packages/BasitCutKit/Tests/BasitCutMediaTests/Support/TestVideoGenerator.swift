@@ -12,6 +12,8 @@ enum TestVideoGenerator {
         var codec: AVVideoCodecType = .h264
         var transform: CGAffineTransform = .identity
         var withAudio = true
+        /// Constant brightness for every frame; `nil` makes it change per frame.
+        var gray: UInt8?
         var creationDate: Date?
         /// ISO 6709 location, e.g. "+48.8566+002.3522/".
         var location: String?
@@ -90,7 +92,7 @@ enum TestVideoGenerator {
 
             if videoReady && (videoTime <= audioTime || !audioReady) {
                 guard let pool = adaptor.pixelBufferPool else { throw GeneratorError.setupFailed }
-                let buffer = try makeFrame(pool: pool, gray: UInt8((frame * 8) % 256))
+                let buffer = try makeFrame(pool: pool, gray: spec.gray ?? UInt8((frame * 8) % 256))
                 guard adaptor.append(buffer, withPresentationTime: CMTime(value: Int64(frame), timescale: spec.fps)) else {
                     throw GeneratorError.writeFailed(writer.error)
                 }

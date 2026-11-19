@@ -148,6 +148,22 @@ struct ExporterTests {
         #expect(values == values.sorted())
     }
 
+    @Test func crossFadeExportsShorterTimelineWithSourceCodec() async throws {
+        let (a, asset) = try await makeSource(archiveSpec)
+        var project = Project()
+        try TimelineEditor.insertClips(for: [a, a], in: &project)
+        try TimelineEditor.setTransition(Transition(kind: .crossFade, duration: .seconds(1)), after: project.clips[0].id, in: &project)
+
+        let url = outputURL
+        try await Exporter.export(project: project, assets: [a.id: asset], mode: .original, to: url)
+
+        let output = try await inspectOutput(url)
+        #expect(abs(output.duration - 3) < 0.1)
+        #expect(output.codec == "avc1")
+        #expect(output.audioTrackCount == 1)
+        try expectArchiveMetadata(output, url: url)
+    }
+
     @Test func spaceSavingIsHVC1AndDownscalesAbove1080p() async throws {
         var spec = archiveSpec
         spec.seconds = 1
