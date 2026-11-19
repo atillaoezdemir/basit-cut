@@ -128,6 +128,10 @@ MyTrip.basitcut/
 
 `ProjectDocument` is a SwiftUI `ReferenceFileDocument` inside a `DocumentGroup`. Each project gets its own window, with no tabs and no limit on open projects. Autosave and versions come from macOS, because every edit is registered with the UndoManager.
 
+### Projects folder
+
+All projects live in one folder that the user chooses once (and can change in Settings). Its security-scoped bookmark is stored in the user defaults, and access stays open for the app's lifetime (`ProjectsFolder`). At launch the app shows the **Projects window** instead of an untitled document or an open panel. That window lists the `.basitcut` packages in the folder, newest first, and creates new projects there under a unique name (`ProjectListing`). A project therefore already has a file location when it opens, so saving never asks where to put it. Projects stored elsewhere can still be opened with File → Open….
+
 ### File access (App Sandbox)
 
 - Entitlements: `com.apple.security.app-sandbox`, `com.apple.security.files.user-selected.read-write`, `com.apple.security.files.bookmarks.app-scope`.

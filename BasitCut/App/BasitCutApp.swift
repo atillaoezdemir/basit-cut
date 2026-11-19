@@ -2,17 +2,68 @@ import SwiftUI
 
 @main
 struct BasitCutApp: App {
+    @NSApplicationDelegateAdaptor private var appDelegate: AppDelegate
+
     var body: some Scene {
+        // Projects are created from the Projects window, inside the projects
+        // folder, so no untitled document or open panel appears at launch.
         DocumentGroup(newDocument: { ProjectDocument() }) { file in
             ProjectWindow(
                 document: file.document,
                 name: file.fileURL?.deletingPathExtension().lastPathComponent ?? "Untitled"
             )
         }
-        .commands { ProjectCommands() }
+        .defaultLaunchBehavior(.suppressed)
+        .commands {
+            ProjectCommands()
+            FileCommands()
+        }
+
+        Window("Projects", id: ProjectsWindow.id) {
+            ProjectsWindow()
+        }
+        .defaultSize(width: 520, height: 420)
+        .defaultLaunchBehavior(.presented)
 
         Settings {
             SettingsView()
+        }
+    }
+}
+
+/// Shows the Projects window instead of an untitled document or an open
+/// panel when the Dock icon is clicked with no windows open.
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    /// Set by `FileCommands`, which has access to SwiftUI's `openWindow`.
+    @MainActor static var showProjects: (() -> Void)?
+
+    func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool { false }
+
+    @MainActor
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        if !hasVisibleWindows { Self.showProjects?() }
+        return false
+    }
+}
+
+/// File menu: new projects go into the projects folder.
+struct FileCommands: Commands {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some Commands {
+        let showProjects = { openWindow(id: ProjectsWindow.id) }
+        let _ = (AppDelegate.showProjects = showProjects)
+        CommandGroup(replacing: .newItem) {
+            Button("New Project…") {
+                showProjects()
+                ProjectsFolder.shared.isNewProjectRequested = true
+            }
+            .keyboardShortcut("n", modifiers: .command)
+            Button("Open…") { NSDocumentController.shared.openDocument(nil) }
+                .keyboardShortcut("o", modifiers: .command)
+            Divider()
+            Button("Show Projects") { showProjects() }
+                .keyboardShortcut("p", modifiers: [.command, .shift])
         }
     }
 }
