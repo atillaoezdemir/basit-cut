@@ -29,7 +29,25 @@ struct ProjectDocumentTests {
         let wrapper = FileWrapper(directoryWithFileWrappers: [
             ProjectDocument.projectFileName: FileWrapper(regularFileWithContents: Data(json.utf8)),
         ])
-        #expect(throws: CocoaError.self) { try ProjectDocument.decode(wrapper) }
+        #expect(throws: ProjectFileError.newerFormat) { try ProjectDocument.decode(wrapper) }
+    }
+
+    @Test func newerFormatIsReportedEvenIfItDoesNotDecode() {
+        let json = #"{ "formatVersion": 999, "somethingNew": true }"#
+        let wrapper = FileWrapper(directoryWithFileWrappers: [
+            ProjectDocument.projectFileName: FileWrapper(regularFileWithContents: Data(json.utf8)),
+        ])
+        #expect(throws: ProjectFileError.newerFormat) { try ProjectDocument.decode(wrapper) }
+    }
+
+    @Test func damagedFileHasAClearError() {
+        let wrapper = FileWrapper(directoryWithFileWrappers: [
+            ProjectDocument.projectFileName: FileWrapper(regularFileWithContents: Data("{ not json".utf8)),
+        ])
+        #expect(throws: ProjectFileError.damaged) { try ProjectDocument.decode(wrapper) }
+        #expect(throws: ProjectFileError.damaged) {
+            try ProjectDocument.decode(FileWrapper(regularFileWithContents: Data()))
+        }
     }
 
     /// AppKit calls `snapshot` on a background queue during autosave.

@@ -47,14 +47,43 @@ final class ProjectDocument: ReferenceFileDocument {
         guard package.isDirectory,
               let data = package.fileWrappers?[projectFileName]?.regularFileContents
         else {
-            throw CocoaError(.fileReadCorruptFile)
+            throw ProjectFileError.damaged
         }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        let project = try decoder.decode(Project.self, from: data)
-        guard project.formatVersion <= Project.currentFormatVersion else {
-            throw CocoaError(.fileReadUnsupportedScheme)
+        // Check the version first: a newer format may not decode at all.
+        if let header = try? decoder.decode(FormatHeader.self, from: data),
+           header.formatVersion > Project.currentFormatVersion {
+            throw ProjectFileError.newerFormat
         }
-        return project
+        do {
+            return try decoder.decode(Project.self, from: data)
+        } catch {
+            throw ProjectFileError.damaged
+        }
+    }
+
+    private struct FormatHeader: Decodable {
+        var formatVersion: Int
+    }
+}
+
+/// Why a project file can't be opened.
+enum ProjectFileError: LocalizedError, Equatable {
+    case damaged
+    case newerFormat
+
+    var errorDescription: String? {
+        switch self {
+        case .damaged: "The project file is damaged or isn’t a basit-cut project."
+        case .newerFormat: "This project was saved by a newer version of basit-cut."
+        }
+    }
+
+    var recoverySuggestion: String? {
+        switch self {
+        case .damaged: "The source videos aren’t affected. Create a new project and import them again."
+        case .newerFormat: "Update basit-cut to open it."
+        }
     }
 }

@@ -16,6 +16,9 @@ final class PlaybackController {
     private(set) var duration: Double = 0
     private(set) var isPlaying = false
     private(set) var isFastForwarding = false
+    /// Why the current composition can't be played (e.g. a source file became
+    /// unreadable after it was loaded), or nil.
+    private(set) var error: String?
 
     /// The time the user asked for; ahead of the player while a seek is pending.
     var displayTime: Double {
@@ -32,6 +35,7 @@ final class PlaybackController {
     @ObservationIgnored private var wasPausedBeforeFastForward = false
     @ObservationIgnored private var timeObserver: Any?
     @ObservationIgnored private var endObserver: NSObjectProtocol?
+    @ObservationIgnored private var statusObserver: NSKeyValueObservation?
 
     static let fastRate: Float = 2
 
@@ -50,6 +54,8 @@ final class PlaybackController {
         let keepTime = displayTime
         if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
         endObserver = nil
+        statusObserver = nil
+        error = nil
 
         guard let built else {
             pause()
@@ -66,6 +72,15 @@ final class PlaybackController {
             forName: AVPlayerItem.didPlayToEndTimeNotification, object: item, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.didReachEnd() }
+        }
+        statusObserver = item.observe(\.status) { [weak self] item, _ in
+            guard item.status == .failed else { return }
+            let message = item.error?.localizedDescription ?? "The video can’t be played."
+            Task { @MainActor in
+                guard self?.player.currentItem === item else { return }
+                self?.pause()
+                self?.error = message
+            }
         }
         seek(to: keepTime, exact: true)
         if isPlaying { player.rate = currentRate }
@@ -137,6 +152,7 @@ final class PlaybackController {
         if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
         timeObserver = nil
         endObserver = nil
+        statusObserver = nil
         player.replaceCurrentItem(with: nil)
     }
 
