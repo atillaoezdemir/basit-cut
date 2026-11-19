@@ -31,9 +31,9 @@ struct TransportBar: View {
             Button("Split", systemImage: "scissors") { session.splitAtPlayhead() }
                 .help("Split at Playhead (⌘B)")
                 .disabled(!session.canSplit)
-            Button("Delete", systemImage: "trash") { session.deleteSelectedClip() }
-                .help("Delete Selected Clip (⌫)")
-                .disabled(session.selectedClipID == nil)
+            Button("Delete", systemImage: "trash") { session.deleteSelectedClips() }
+                .help("Delete Selected Clips (⌫)")
+                .disabled(session.selection.isEmpty)
 
             Button("Export", systemImage: "square.and.arrow.up") { session.showExport() }
                 .help("Export (⌘E)")

@@ -5,6 +5,7 @@ import AppKit
 /// - `Space`: play/pause
 /// - hold the fast-forward key (default `L`, see Settings): 2× while held
 /// - `←`/`→` jump 5 s, `⇧←`/`⇧→` jump 30 s; holding keeps jumping
+/// - `⌘A`: select all clips
 ///
 /// Uses a local `NSEvent` monitor because SwiftUI has no key-up events. Events
 /// are only handled while this window is key and no text field has focus;
@@ -24,6 +25,8 @@ final class KeyboardController {
     private var resignObserver: NSObjectProtocol?
     private var jumpTimer: Timer?
     private var jumpDirection: Double = 0
+    /// ⌘A outside text fields selects all clips.
+    var onSelectAll: (() -> Void)?
 
     init(playback: PlaybackController) {
         self.playback = playback
@@ -61,7 +64,12 @@ final class KeyboardController {
     /// Returns `nil` for consumed events.
     private func handle(_ event: NSEvent) -> NSEvent? {
         guard let window, event.window === window, !(window.firstResponder is NSText) else { return event }
-        guard event.modifierFlags.intersection([.command, .control, .option]).isEmpty else { return event }
+        let modifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
+        if event.type == .keyDown, modifiers == .command, event.charactersIgnoringModifiers == "a", let onSelectAll {
+            onSelectAll()
+            return nil
+        }
+        guard modifiers.subtracting(.shift).isEmpty else { return event }
         let isDown = event.type == .keyDown
 
         switch event.keyCode {

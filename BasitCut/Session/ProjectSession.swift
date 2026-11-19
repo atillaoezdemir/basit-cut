@@ -35,9 +35,20 @@ final class ProjectSession {
     let library = MediaLibrary()
     let playback = PlaybackController()
     let export = ExportController()
-    @ObservationIgnored private(set) lazy var keyboard = KeyboardController(playback: playback)
+    @ObservationIgnored private(set) lazy var keyboard: KeyboardController = {
+        let keyboard = KeyboardController(playback: playback)
+        keyboard.onSelectAll = { [weak self] in self?.selectAllClips() }
+        return keyboard
+    }()
 
-    var selectedClipID: Clip.ID?
+    /// Selected clips. A click selects one, ⌘-click adds or removes, ⌘A selects all.
+    var selection: Set<Clip.ID> = []
+
+    /// The selected clip when exactly one is selected.
+    var selectedClipID: Clip.ID? {
+        get { selection.count == 1 ? selection.first : nil }
+        set { selection = newValue.map { [$0] } ?? [] }
+    }
     /// Timeline zoom.
     var pointsPerSecond: Double = 40
     var isImporterPresented = false
@@ -73,8 +84,9 @@ final class ProjectSession {
     }
 
     func projectDidChange() {
-        if let selectedClipID, project.clipIndex(id: selectedClipID) == nil {
-            self.selectedClipID = nil
+        let existing = Set(project.clips.map(\.id))
+        if !selection.isSubset(of: existing) {
+            selection.formIntersection(existing)
         }
         refreshLibrary()
         scheduleRebuild()
@@ -139,7 +151,8 @@ final class ProjectSession {
             }
         }
 
-        let insertionIndex = selectedClipID.flatMap { project.clipIndex(id: $0) }.map { $0 + 1 }
+        // After the last selected clip, or at the end.
+        let insertionIndex = project.clips.lastIndex { selection.contains($0.id) }.map { $0 + 1 }
         let failureText = failures.joined(separator: "\n\n")
         let (matching, warnings) = formatCheck(for: imported)
 
@@ -224,11 +237,21 @@ final class ProjectSession {
         }
     }
 
-    func deleteSelectedClip() {
-        guard let id = selectedClipID, let index = project.clipIndex(id: id) else { return }
-        try? editor.perform("Delete Clip") { try TimelineEditor.delete(clips: [id], in: &$0) }
+    func deleteSelectedClips() {
+        guard let index = project.clips.firstIndex(where: { selection.contains($0.id) }) else { return }
+        let ids = selection
+        try? editor.perform(ids.count == 1 ? "Delete Clip" : "Delete Clips") { try TimelineEditor.delete(clips: ids, in: &$0) }
         let clips = project.clips
         selectedClipID = clips.isEmpty ? nil : clips[min(index, clips.count - 1)].id
+    }
+
+    func selectAllClips() {
+        selection = Set(project.clips.map(\.id))
+    }
+
+    /// ⌘-click: adds the clip to the selection or removes it.
+    func toggleSelection(_ id: Clip.ID) {
+        if selection.contains(id) { selection.remove(id) } else { selection.insert(id) }
     }
 
     func moveClip(_ id: Clip.ID, to destination: Int) {
@@ -262,10 +285,42 @@ final class ProjectSession {
         return trial.clips.first { $0.id == clipID }?.outgoingTransition?.duration ?? Transition.minimumDuration
     }
 
-    /// The selected clip, if a cut follows it (menu commands act on that cut).
-    var clipBeforeSelectedCut: Clip.ID? {
-        guard let id = selectedClipID, let index = project.clipIndex(id: id), index < project.clips.count - 1 else { return nil }
-        return id
+    /// The cuts the transition commands act on, each named by the clip before it:
+    /// with one clip selected, the cut after it; with several, every cut
+    /// between two selected clips (⌘A then ⌘T fills the whole timeline).
+    var selectedCuts: [Clip.ID] {
+        let clips = project.clips
+        guard clips.count > 1 else { return [] }
+        if let id = selectedClipID {
+            guard let index = project.clipIndex(id: id), index < clips.count - 1 else { return [] }
+            return [id]
+        }
+        return zip(clips, clips.dropFirst())
+            .filter { selection.contains($0.id) && selection.contains($1.id) }
+            .map(\.0.id)
+    }
+
+    /// Whether any of `selectedCuts` has a transition.
+    var selectedCutsHaveTransition: Bool {
+        let cuts = Set(selectedCuts)
+        return project.clips.contains { cuts.contains($0.id) && $0.outgoingTransition != nil }
+    }
+
+    /// Sets the transition kind at every selected cut, in one undo step.
+    /// Existing durations are kept; new transitions get the default duration.
+    func setTransitionKindForSelectedCuts(_ kind: Transition.Kind?) {
+        let cuts = selectedCuts
+        guard !cuts.isEmpty else { return }
+        let name = kind == nil
+            ? (cuts.count == 1 ? "Remove Transition" : "Remove Transitions")
+            : (cuts.count == 1 ? "Set Transition" : "Set Transitions")
+        try? editor.perform(name) { project in
+            for id in cuts {
+                let current = project.clips.first { $0.id == id }?.outgoingTransition
+                let transition = kind.map { Transition(kind: $0, duration: current?.duration ?? Transition.defaultDuration) }
+                try TimelineEditor.setTransition(transition, after: id, in: &project)
+            }
+        }
     }
 
     /// The playhead as exact time (microsecond precision before frame snapping).

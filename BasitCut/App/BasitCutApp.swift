@@ -73,10 +73,7 @@ struct FileCommands: Commands {
 struct ProjectCommands: Commands {
     @FocusedValue(\.projectSession) private var session
 
-    private func setTransition(_ kind: Transition.Kind?) {
-        guard let session, let id = session.clipBeforeSelectedCut else { return }
-        session.setTransitionKind(kind, after: id)
-    }
+    private var hasSelectedCuts: Bool { session?.selectedCuts.isEmpty == false }
 
     var body: some Commands {
         CommandGroup(after: .importExport) {
@@ -91,21 +88,20 @@ struct ProjectCommands: Commands {
             Button("Split at Playhead") { session?.splitAtPlayhead() }
                 .keyboardShortcut("b", modifiers: .command)
                 .disabled(session?.canSplit != true)
-            Button("Delete Clip") { session?.deleteSelectedClip() }
+            Button(session?.selection.count ?? 0 > 1 ? "Delete Clips" : "Delete Clip") { session?.deleteSelectedClips() }
                 .keyboardShortcut(.delete, modifiers: [])
-                .disabled(session?.selectedClipID == nil)
+                .disabled(session?.selection.isEmpty != false)
             Divider()
-            // These act on the cut after the selected clip.
-            Button("Cross Fade to Next Clip") { setTransition(.crossFade) }
+            // With one clip selected these act on the cut after it; with several
+            // (⌘A selects all), on every cut between selected clips.
+            Button("Cross Fade") { session?.setTransitionKindForSelectedCuts(.crossFade) }
                 .keyboardShortcut("t", modifiers: .command)
-                .disabled(session?.clipBeforeSelectedCut == nil)
-            Button("Black Fade to Next Clip") { setTransition(.blackFade) }
-                .keyboardShortcut("t", modifiers: [.command, .option])
-                .disabled(session?.clipBeforeSelectedCut == nil)
-            Button("Remove Transition") { setTransition(nil) }
-                .disabled(session?.clipBeforeSelectedCut.flatMap { id in
-                    session?.project.clips.first { $0.id == id }?.outgoingTransition
-                } == nil)
+                .disabled(!hasSelectedCuts)
+            Button("Black Fade") { session?.setTransitionKindForSelectedCuts(.blackFade) }
+                .keyboardShortcut("t", modifiers: [.command, .shift])
+                .disabled(!hasSelectedCuts)
+            Button("Remove Transition") { session?.setTransitionKindForSelectedCuts(nil) }
+                .disabled(session?.selectedCutsHaveTransition != true)
         }
         CommandGroup(after: .toolbar) {
             Button("Zoom In") { session?.zoom(by: 1.5) }

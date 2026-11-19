@@ -147,13 +147,13 @@ struct TimelineView: View {
             ClipView(
                 name: source?.displayName ?? "Missing",
                 duration: item.clip.duration.seconds,
-                isSelected: session.selectedClipID == item.clip.id,
+                isSelected: session.selection.contains(item.clip.id),
                 isMissing: source.map { session.library.missing.contains($0.id) } ?? true,
                 colorIndex: item.index,
                 showsLeadingHandle: sliceStart <= clipX,
                 showsTrailingHandle: sliceEnd >= clipX + clipWidth,
                 onTrimChanged: { edge, translation in
-                    session.selectedClipID = item.clip.id
+                    if !session.selection.contains(item.clip.id) { session.selectedClipID = item.clip.id }
                     trim = TrimDrag(clipID: item.clip.id, edge: edge, translation: translation)
                 },
                 onTrimEnded: { edge, translation in
@@ -171,7 +171,7 @@ struct TimelineView: View {
             .gesture(
                 DragGesture(minimumDistance: 6)
                     .onChanged { value in
-                        session.selectedClipID = item.clip.id
+                        if !session.selection.contains(item.clip.id) { session.selectedClipID = item.clip.id }
                         reorder = ReorderDrag(clipID: item.clip.id, translation: value.translation.width)
                     }
                     .onEnded { value in
@@ -234,9 +234,14 @@ struct TimelineView: View {
         let time = max(0, location.x / pps)
         if location.y >= trackTop, location.y <= trackTop + trackHeight {
             let rational = RationalTime(seconds: time, preferredTimescale: 1_000_000)
-            session.selectedClipID = layout.item(at: rational)?.clip.id
+            let clicked = layout.item(at: rational)?.clip.id
+            if NSEvent.modifierFlags.contains(.command) {
+                if let clicked { session.toggleSelection(clicked) }
+                return   // ⌘-click only changes the selection
+            }
+            session.selectedClipID = clicked
         } else if location.y > trackTop + trackHeight {
-            session.selectedClipID = nil
+            session.selection = []
         }
         // A quick tolerant seek shows a nearby frame at once; the exact seek
         // queued behind it lands on the precise frame.
