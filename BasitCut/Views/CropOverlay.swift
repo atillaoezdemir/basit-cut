@@ -1,93 +1,26 @@
 import SwiftUI
 import BasitCutCore
 
-/// Positions and resizes the crop over the uncropped frame at the playhead.
-/// Changes apply to the project (one undo step) when Done is pressed.
-struct CropEditor: View {
-    let session: ProjectSession
-    @Environment(\.dismiss) private var dismiss
+/// The crop rectangle drawn over the uncropped preview: drag inside to move,
+/// drag a corner to resize (fixed ratios stay locked).
+struct CropOverlay: View {
+    @Binding var rect: NormalizedRect
+    let mode: CropSetting.Mode
+    let canvas: Size
 
-    @State private var mode: CropSetting.Mode = .free
-    @State private var rect: NormalizedRect = .full
-    @State private var frame: CGImage?
     @State private var dragStart: NormalizedRect?
-
-    private static let space = "crop"
+    private static let space = "cropOverlay"
     private let handleSize: CGFloat = 14
 
-    private var canvas: Size { session.project.canvasSize ?? Size(width: 16, height: 9) }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("Crop").font(.title3.bold())
-                Spacer()
-                Picker("Aspect Ratio", selection: Binding(get: { mode }, set: { changeMode($0) })) {
-                    ForEach(CropSetting.Mode.allCases.filter { $0 != .original }, id: \.self) { Text($0.title).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(width: 260)
-            }
-
-            ZStack {
-                Color.black
-                if let frame {
-                    Image(decorative: frame, scale: 1).resizable()
-                } else {
-                    ProgressView()
-                }
-                GeometryReader { geometry in
-                    overlay(size: geometry.size)
-                }
-                .coordinateSpace(.named(Self.space))
-            }
-            .aspectRatio(canvas.width / canvas.height, contentMode: .fit)
-            .frame(maxWidth: 620, maxHeight: 420)
-            .frame(maxWidth: .infinity)
-
-            Text(sizeDescription)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-
-            HStack {
-                Button("Reset") { rect = CropGeometry.setting(for: mode, canvas: canvas).rect }
-                Spacer()
-                Button("Cancel", role: .cancel) { dismiss() }
-                    .keyboardShortcut(.cancelAction)
-                Button("Done") {
-                    session.setCrop(CropSetting(mode: mode, rect: rect))
-                    dismiss()
-                }
-                .keyboardShortcut(.defaultAction)
-            }
+        GeometryReader { geometry in
+            content(size: geometry.size)
         }
-        .padding(20)
-        .frame(width: 660)
-        .task {
-            let crop = session.project.crop
-            mode = crop.mode == .original ? .free : crop.mode
-            rect = CropGeometry.clamped(crop.rect, mode: mode, canvas: canvas)
-            frame = await session.uncroppedFrame()
-        }
+        .coordinateSpace(.named(Self.space))
     }
-
-    private var sizeDescription: String {
-        var project = session.project
-        project.crop = CropSetting(mode: mode, rect: rect)
-        guard let size = project.renderSize else { return "" }
-        return "Output: \(Int(size.width))×\(Int(size.height))"
-    }
-
-    private func changeMode(_ newMode: CropSetting.Mode) {
-        mode = newMode
-        rect = CropGeometry.setting(for: newMode, canvas: canvas, current: rect).rect
-    }
-
-    // MARK: Overlay
 
     @ViewBuilder
-    private func overlay(size: CGSize) -> some View {
+    private func content(size: CGSize) -> some View {
         let box = CGRect(x: rect.x * size.width, y: rect.y * size.height, width: rect.width * size.width, height: rect.height * size.height)
 
         // Dim everything outside the crop.
@@ -95,10 +28,10 @@ struct CropEditor: View {
             path.addRect(CGRect(origin: .zero, size: size))
             path.addRect(box)
         }
-        .fill(.black.opacity(0.55), style: FillStyle(eoFill: true))
+        .fill(.black.opacity(0.6), style: FillStyle(eoFill: true))
         .allowsHitTesting(false)
 
-        // Rule of thirds and border.
+        // Rule of thirds.
         Path { path in
             for i in 1...2 {
                 let x = box.minX + box.width * Double(i) / 3, y = box.minY + box.height * Double(i) / 3
@@ -126,13 +59,12 @@ struct CropEditor: View {
             )
 
         ForEach(CropGeometry.Corner.allCases, id: \.self) { corner in
-            let point = position(of: corner, in: box)
             RoundedRectangle(cornerRadius: 3)
                 .fill(.white)
                 .shadow(radius: 1)
                 .frame(width: handleSize, height: handleSize)
                 .contentShape(Rectangle().inset(by: -6))
-                .position(point)
+                .position(position(of: corner, in: box))
                 .pointerStyle(.frameResize(position: framePosition(corner)))
                 .gesture(
                     DragGesture(coordinateSpace: .named(Self.space))
@@ -165,6 +97,42 @@ struct CropEditor: View {
         case .topTrailing: .topTrailing
         case .bottomLeading: .bottomLeading
         case .bottomTrailing: .bottomTrailing
+        }
+    }
+}
+
+/// The bar above the preview while cropping: ratio, output size, Done/Cancel.
+struct CropBar: View {
+    let session: ProjectSession
+
+    var body: some View {
+        if let draft = session.cropDraft {
+            HStack(spacing: 12) {
+                Label("Crop", systemImage: "crop").font(.headline)
+                Picker("Aspect Ratio", selection: Binding(
+                    get: { draft.mode },
+                    set: { session.beginCropEditing($0) }
+                )) {
+                    ForEach(CropSetting.Mode.allCases.filter { $0 != .original }, id: \.self) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
+                if let size = session.cropDraftOutputSize {
+                    Text("\(Int(size.width))×\(Int(size.height))")
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("Reset") { session.resetCropDraft() }
+                Button("Cancel", role: .cancel) { session.finishCropEditing(apply: false) }
+                    .keyboardShortcut(.cancelAction)
+                Button("Done") { session.finishCropEditing(apply: true) }
+                    .keyboardShortcut(.defaultAction)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(.bar)
         }
     }
 }

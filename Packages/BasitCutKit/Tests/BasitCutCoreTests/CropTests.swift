@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import BasitCutCore
 
@@ -9,14 +10,10 @@ struct CropTests {
     }
 
     @Test func fixedRatiosGetTheLargestCenteredRect() {
-        let square = CropGeometry.setting(for: .ratio1x1, canvas: landscape).rect
-        #expect(abs(pixelRatio(square, landscape) - 1) < 1e-9)
-        #expect(square.height == 1)
-        #expect(abs(square.midX - 0.5) < 1e-9)
-
         let portrait = CropGeometry.setting(for: .ratio9x16, canvas: landscape).rect
         #expect(abs(pixelRatio(portrait, landscape) - 9.0 / 16) < 1e-9)
         #expect(portrait.height == 1)
+        #expect(abs(portrait.midX - 0.5) < 1e-9)
 
         // 16:9 on a portrait canvas is limited by the width.
         let canvas = Size(width: 1080, height: 1920)
@@ -32,10 +29,11 @@ struct CropTests {
     }
 
     @Test func resizingKeepsTheOppositeCornerAndTheRatio() {
-        let start = CropGeometry.setting(for: .ratio1x1, canvas: landscape).rect
-        let resized = CropGeometry.resized(start, corner: .bottomTrailing, to: (x: 0.5, y: 0.5), mode: .ratio1x1, canvas: landscape)
+        let start = CropGeometry.setting(for: .ratio9x16, canvas: landscape).rect
+        let resized = CropGeometry.resized(start, corner: .bottomTrailing, to: (x: 0.5, y: 0.5), mode: .ratio9x16, canvas: landscape)
         #expect(resized.x == start.x && resized.y == start.y)
-        #expect(abs(pixelRatio(resized, landscape) - 1) < 1e-9)
+        #expect(resized.height < start.height)
+        #expect(abs(pixelRatio(resized, landscape) - 9.0 / 16) < 1e-9)
         #expect(resized.maxX <= 1 && resized.maxY <= 1)
     }
 
@@ -60,17 +58,24 @@ struct CropTests {
     }
 
     @Test func modeChosenBeforeAnyClipAdaptsToTheFirstClip() {
-        // A new project may get 1:1 before it has clips; the rect is then .full.
+        // A new project may get 9:16 before it has clips; the rect is then .full.
         var project = Fixture.project(clipSeconds: [5])
-        project.crop = CropSetting(mode: .ratio1x1)
-        #expect(project.renderSize == Size(width: 1080, height: 1080))
+        project.crop = CropSetting(mode: .ratio9x16)
+        #expect(project.renderSize == Size(width: 608, height: 1080))
     }
 
     @Test func cropDisablesPassthrough() {
         var project = Fixture.project(clipSeconds: [5])
         #expect(ExportPlan.canPassthrough(project))
-        project.crop = CropGeometry.setting(for: .ratio1x1, canvas: landscape)
+        project.crop = CropGeometry.setting(for: .ratio16x9, canvas: Size(width: 1080, height: 1920))
         #expect(!ExportPlan.canPassthrough(project))
+    }
+
+    @Test func retiredSquareModeIsReadAsFree() throws {
+        let json = #"{"mode":"ratio1x1","rect":{"x":0.2,"y":0,"width":0.6,"height":1}}"#
+        let crop = try JSONDecoder().decode(CropSetting.self, from: Data(json.utf8))
+        #expect(crop.mode == .free)
+        #expect(crop.rect.width == 0.6)
     }
 
     @Test func coverFrameIsTheSourceFrameAtTheTime() throws {

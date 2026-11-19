@@ -3,7 +3,14 @@ import Foundation
 /// Project-wide crop / aspect ratio.
 public struct CropSetting: Hashable, Codable, Sendable {
     public enum Mode: String, Hashable, Codable, Sendable, CaseIterable {
-        case original, ratio16x9, ratio9x16, ratio1x1, free
+        case original, ratio16x9, ratio9x16, free
+
+        /// Unknown or retired modes (early projects could use 1:1) are read
+        /// as free crop: the stored rect stays valid, only its ratio isn't locked.
+        public init(from decoder: Decoder) throws {
+            let raw = try decoder.singleValueContainer().decode(String.self)
+            self = Mode(rawValue: raw) ?? .free
+        }
     }
 
     public var mode: Mode

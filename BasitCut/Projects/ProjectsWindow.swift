@@ -148,7 +148,7 @@ struct ProjectsWindow: View {
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
-                Text("Can be changed and positioned later in the export dialog.")
+                Text("Can be changed and positioned later with the Crop button.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

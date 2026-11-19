@@ -41,7 +41,7 @@ struct ExportPlanTests {
 
     @Test func cropForcesReencode() throws {
         var project = Fixture.project(clipSeconds: [4])
-        project.crop = CropSetting(mode: .ratio1x1, rect: NormalizedRect(x: 0.2, y: 0, width: 0.6, height: 1))
+        project.crop = CropSetting(mode: .free, rect: NormalizedRect(x: 0.2, y: 0, width: 0.6, height: 1))
         guard case .reencode = try ExportPlan.make(for: project, mode: .original) else {
             Issue.record("expected re-encode"); return
         }

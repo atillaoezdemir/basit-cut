@@ -84,6 +84,7 @@ final class ProjectSession {
     }
 
     func projectDidChange() {
+        if project.clips.isEmpty { cropDraft = nil }
         let existing = Set(project.clips.map(\.id))
         if !selection.isSubset(of: existing) {
             selection.formIntersection(existing)
@@ -325,15 +326,62 @@ final class ProjectSession {
 
     // MARK: Crop
 
-    /// Switches the crop mode. Fixed ratios start as the largest centered
-    /// area; free crop starts from the current area.
-    func setCropMode(_ mode: CropSetting.Mode) {
-        guard mode != project.crop.mode else { return }
-        editor.perform("Change Aspect Ratio") { project in
-            project.crop = project.canvasSize.map {
-                CropGeometry.setting(for: mode, canvas: $0, current: project.crop.rect)
-            } ?? CropSetting(mode: mode)
+    /// The crop being edited on the preview, or nil. While it is set, the
+    /// preview shows the uncropped frame with the crop drawn over it; the
+    /// project changes only when editing is finished with Done.
+    private(set) var cropDraft: CropSetting?
+
+    var isEditingCrop: Bool { cropDraft != nil }
+
+    /// The crop menu: Original applies at once, a ratio or Free starts editing.
+    func chooseCropMode(_ mode: CropSetting.Mode) {
+        if mode == .original {
+            cropDraft = nil
+            setCrop(.original)
+            scheduleRebuild(delay: .zero)
+        } else {
+            beginCropEditing(mode)
         }
+    }
+
+    /// Starts (or, during editing, switches the ratio of) the crop editing.
+    /// The current area is kept when the mode stays the same.
+    func beginCropEditing(_ mode: CropSetting.Mode) {
+        guard mode != .original, let canvas = project.canvasSize else { return }
+        let wasEditing = isEditingCrop
+        let base = cropDraft ?? project.crop
+        cropDraft = mode == base.mode
+            ? CropSetting(mode: mode, rect: CropGeometry.clamped(base.rect, mode: mode, canvas: canvas))
+            : CropGeometry.setting(for: mode, canvas: canvas, current: base.rect)
+        if !wasEditing {
+            playback.pause()
+            scheduleRebuild(delay: .zero)
+        }
+    }
+
+    func updateCropDraft(_ rect: NormalizedRect) {
+        guard let draft = cropDraft, let canvas = project.canvasSize else { return }
+        cropDraft = CropSetting(mode: draft.mode, rect: CropGeometry.clamped(rect, mode: draft.mode, canvas: canvas))
+    }
+
+    func resetCropDraft() {
+        guard let draft = cropDraft, let canvas = project.canvasSize else { return }
+        cropDraft = CropGeometry.setting(for: draft.mode, canvas: canvas)
+    }
+
+    /// Output size of the crop being edited.
+    var cropDraftOutputSize: Size? {
+        guard let draft = cropDraft else { return nil }
+        var preview = project
+        preview.crop = draft
+        return preview.renderSize
+    }
+
+    func finishCropEditing(apply: Bool) {
+        guard let draft = cropDraft else { return }
+        cropDraft = nil
+        if apply { setCrop(draft) }
+        scheduleRebuild(delay: .zero)
     }
 
     func setCrop(_ crop: CropSetting) {
@@ -341,17 +389,11 @@ final class ProjectSession {
         editor.perform("Change Crop") { $0.crop = crop }
     }
 
-    /// The frame at the playhead without the crop, for the crop editor.
-    func uncroppedFrame() async -> CGImage? {
-        var uncropped = project
-        uncropped.crop = .original
-        let assets: [MediaSource.ID: AVAsset] = library.assets
-        guard let built = try? await CompositionBuilder.build(project: uncropped, assets: assets) else { return nil }
-        let generator = AVAssetImageGenerator(asset: built.composition)
-        generator.videoComposition = built.videoComposition
-        generator.maximumSize = CGSize(width: 1600, height: 1600)
-        let time = CMTime(seconds: min(playback.displayTime, max(0, built.layout.duration.seconds - 0.05)), preferredTimescale: 600)
-        return try? await generator.image(at: time).image
+    /// What the preview plays: the project, uncropped while the crop is edited.
+    private var previewProject: Project {
+        var preview = project
+        if isEditingCrop { preview.crop = .original }
+        return preview
     }
 
     // MARK: Cover
@@ -422,7 +464,7 @@ final class ProjectSession {
     }
 
     private func rebuild() async {
-        let project = self.project
+        let project = previewProject
         guard !project.clips.isEmpty else {
             compositionError = nil
             playback.load(nil)
@@ -440,7 +482,7 @@ final class ProjectSession {
         let assets: [MediaSource.ID: AVAsset] = library.assets
         do {
             let built = try await CompositionBuilder.build(project: project, assets: assets)
-            guard !Task.isCancelled, project == self.project else { return }
+            guard !Task.isCancelled, project == previewProject else { return }
             compositionError = nil
             playback.load(built)
         } catch {

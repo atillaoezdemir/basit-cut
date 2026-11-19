@@ -10,7 +10,6 @@ extension CropSetting.Mode {
         case .original, .free: nil
         case .ratio16x9: 16.0 / 9
         case .ratio9x16: 9.0 / 16
-        case .ratio1x1: 1
         }
     }
 
@@ -19,7 +18,6 @@ extension CropSetting.Mode {
         case .original: "Original"
         case .ratio16x9: "16:9"
         case .ratio9x16: "9:16"
-        case .ratio1x1: "1:1"
         case .free: "Free"
         }
     }

@@ -13,7 +13,6 @@ struct ExportSheet: View {
     @Bindable var session: ProjectSession
     let defaultName: String
     @Environment(\.dismiss) private var dismiss
-    @State private var isCropEditorPresented = false
     @State private var coverThumbnail: CGImage?
 
     private var export: ExportController { session.export }
@@ -36,7 +35,6 @@ struct ExportSheet: View {
         .padding(20)
         .frame(width: 500)
         .interactiveDismissDisabled(export.isExporting)
-        .sheet(isPresented: $isCropEditorPresented) { CropEditor(session: session) }
         .task(id: CoverKey(cover: session.project.cover, crop: session.project.crop)) {
             coverThumbnail = await session.coverThumbnail()
         }
@@ -88,26 +86,11 @@ struct ExportSheet: View {
         }
     }
 
-    /// Aspect ratio / crop and cover: project settings, also changeable here.
+    /// The cover that will be embedded (set from the preview).
     private var framing: some View {
         Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 10) {
             GridRow {
-                Text("Aspect ratio").gridColumnAlignment(.trailing)
-                HStack {
-                    Picker("Aspect ratio", selection: Binding(
-                        get: { session.project.crop.mode },
-                        set: { session.setCropMode($0) }
-                    )) {
-                        ForEach(CropSetting.Mode.allCases, id: \.self) { Text($0.title).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    Button("Adjust…") { isCropEditorPresented = true }
-                        .disabled(session.project.crop.mode == .original)
-                }
-            }
-            GridRow {
-                Text("Cover")
+                Text("Cover").gridColumnAlignment(.trailing)
                 HStack(spacing: 10) {
                     if session.project.cover != nil {
                         Group {

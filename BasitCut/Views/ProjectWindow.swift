@@ -27,6 +27,7 @@ struct ProjectWindow: View {
                     .padding(8)
                     .background(.yellow.opacity(0.25))
             }
+            CropBar(session: session)
             preview
             // An empty project shows only the import prompt.
             if !session.project.clips.isEmpty {
@@ -104,6 +105,16 @@ struct ProjectWindow: View {
                 .colorScheme(.dark)
             } else {
                 PlayerView(player: session.playback.player)
+                if let draft = session.cropDraft, let canvas = session.project.canvasSize {
+                    // Laid out like the player's aspect-fit video, so the
+                    // rectangle sits exactly on the uncropped frame.
+                    CropOverlay(
+                        rect: Binding(get: { draft.rect }, set: { session.updateCropDraft($0) }),
+                        mode: draft.mode,
+                        canvas: canvas
+                    )
+                    .aspectRatio(canvas.width / canvas.height, contentMode: .fit)
+                }
             }
             if let message = session.flashMessage {
                 Label(message, systemImage: "photo")

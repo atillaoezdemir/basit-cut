@@ -1,4 +1,5 @@
 import SwiftUI
+import BasitCutCore
 
 /// Play/pause, time display, edit buttons and timeline zoom.
 struct TransportBar: View {
@@ -34,6 +35,27 @@ struct TransportBar: View {
             Button("Delete", systemImage: "trash") { session.deleteSelectedClips() }
                 .help("Delete Selected Clips (⌫)")
                 .disabled(session.selection.isEmpty)
+
+            Menu {
+                Picker("Aspect Ratio", selection: Binding(
+                    get: { session.project.crop.mode },
+                    set: { session.chooseCropMode($0) }
+                )) {
+                    ForEach(CropSetting.Mode.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.inline)
+                if session.project.crop.mode != .original {
+                    Divider()
+                    Button("Adjust Crop…") { session.beginCropEditing(session.project.crop.mode) }
+                }
+            } label: {
+                Label("Crop", systemImage: "crop")
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("Aspect Ratio and Crop")
+            .disabled(session.isEditingCrop)
 
             Button("Cover", systemImage: session.project.cover == nil ? "photo" : "photo.fill") { session.setCoverAtPlayhead() }
                 .help("Set Current Frame as Cover (⇧⌘K)")
