@@ -53,6 +53,8 @@ final class ProjectSession {
     var pointsPerSecond: Double = 40
     var isImporterPresented = false
     var isExportPresented = false
+    /// Opens by itself when the project opens with missing files.
+    var isRelinkPresented = false
     private(set) var isImporting = false
     var alert: AppAlert?
     var pendingImport: PendingImport?
@@ -73,6 +75,7 @@ final class ProjectSession {
     func start() {
         refreshLibrary()
         scheduleRebuild(delay: .zero)
+        if !missingSources.isEmpty { isRelinkPresented = true }
     }
 
     func close() {
@@ -93,6 +96,65 @@ final class ProjectSession {
         scheduleRebuild()
     }
 
+    // MARK: Relink
+
+    /// Sources the timeline or the cover uses whose files can't be found.
+    var missingSources: [MediaSource] {
+        let used = Set(project.clips.map(\.sourceID)).union(project.cover.map { [$0.sourceID] } ?? [])
+        return project.sources.filter { used.contains($0.id) && library.missing.contains($0.id) }
+    }
+
+    /// Points `source` at `url`. Returns a warning if the file's format differs.
+    func relink(_ source: MediaSource, to url: URL) async throws -> String? {
+        let accessing = url.startAccessingSecurityScopedResource()
+        do {
+            let warning = try await relink(source, toAccessible: url)
+            library.register(project.source(id: source.id) ?? source, url: url, accessing: accessing)
+            return warning
+        } catch {
+            if accessing { url.stopAccessingSecurityScopedResource() }
+            throw error
+        }
+    }
+
+    /// Looks in `folder` for files named like the missing sources and relinks
+    /// every one it finds. Returns the names it couldn't relink, with reasons.
+    func relinkMissing(in folder: URL) async -> (relinked: Int, problems: [String]) {
+        let accessing = folder.startAccessingSecurityScopedResource()
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: folder.path(percentEncoded: false))) ?? []
+        let matches = TimelineEditor.relinkCandidates(for: missingSources, among: names)
+        var relinked = 0
+        var problems: [String] = []
+        for source in missingSources {
+            guard let name = matches[source.id] else { continue }
+            let url = folder.appending(path: name, directoryHint: .notDirectory)
+            do {
+                if let warning = try await relink(source, toAccessible: url) { problems.append(warning) }
+                library.register(project.source(id: source.id) ?? source, url: url, accessing: false)
+                relinked += 1
+            } catch {
+                problems.append("\(name): \(error.localizedDescription)")
+            }
+        }
+        if accessing {
+            if relinked > 0 { library.keepAccess(to: folder) } else { folder.stopAccessingSecurityScopedResource() }
+        }
+        return (relinked, problems)
+    }
+
+    /// Inspects `url` (already accessible) and replaces `source` with it.
+    private func relink(_ source: MediaSource, toAccessible url: URL) async throws -> String? {
+        let inspection = try await AssetInspector.inspect(url)
+        let bookmark = try SecurityScopedBookmark.make(for: url)
+        let replacement = MediaSource(id: source.id, url: url, bookmark: bookmark, inspection: inspection)
+        let differences = try editor.perform("Relink File") { project in
+            try TimelineEditor.relink(source: source.id, to: replacement, in: &project)
+        }
+        guard !differences.isEmpty else { return nil }
+        return "\(replacement.displayName) differs from the original: "
+            + differences.map(Self.describe).joined(separator: ", ")
+    }
+
     // MARK: Export
 
     var canExport: Bool { !project.clips.isEmpty }
@@ -111,11 +173,7 @@ final class ProjectSession {
             .map(\.displayName)
         guard missingNames.isEmpty else {
             isExportPresented = false
-            alert = AppAlert(
-                title: "Missing source files",
-                message: "These files can’t be found, so the project can’t be exported:\n\n"
-                    + missingNames.joined(separator: "\n")
-            )
+            isRelinkPresented = true
             return
         }
         export.start(project: project, assets: library.assets, to: url)
@@ -466,7 +524,8 @@ final class ProjectSession {
             .filter { library.missing.contains($0.id) }
             .map(\.displayName)
         guard missingNames.isEmpty else {
-            compositionError = "Missing source files: " + Set(missingNames).sorted().joined(separator: ", ")
+            compositionError = (missingNames.count == 1 ? "A source file is missing: " : "Source files are missing: ")
+                + Set(missingNames).sorted().joined(separator: ", ")
             playback.load(nil)
             return
         }

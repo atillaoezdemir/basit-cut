@@ -83,6 +83,8 @@ struct ProjectCommands: Commands {
             Button("Export…") { session?.showExport() }
                 .keyboardShortcut("e", modifiers: .command)
                 .disabled(session?.canExport != true)
+            Button("Relink Missing Files…") { session?.isRelinkPresented = true }
+                .disabled(session?.missingSources.isEmpty != false)
         }
         CommandMenu("Clip") {
             Button("Split at Playhead") { session?.splitAtPlayhead() }

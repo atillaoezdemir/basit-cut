@@ -20,12 +20,17 @@ struct ProjectWindow: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if let error = session.compositionError {
-                Label(error, systemImage: "exclamationmark.triangle.fill")
-                    .font(.callout)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(8)
-                    .background(.yellow.opacity(0.25))
+            if let error = session.compositionError ?? session.playback.error {
+                HStack {
+                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                        .font(.callout)
+                    Spacer()
+                    if !session.missingSources.isEmpty {
+                        Button("Relink…") { session.isRelinkPresented = true }
+                    }
+                }
+                .padding(8)
+                .background(.yellow.opacity(0.25))
             }
             CropBar(session: session)
             preview
@@ -65,6 +70,9 @@ struct ProjectWindow: View {
         }
         .sheet(isPresented: $session.isExportPresented) {
             ExportSheet(session: session, defaultName: name)
+        }
+        .sheet(isPresented: $session.isRelinkPresented) {
+            RelinkSheet(session: session)
         }
         .alert(
             "Different video format",

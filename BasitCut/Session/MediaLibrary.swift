@@ -9,7 +9,7 @@ import BasitCutMedia
 @Observable
 final class MediaLibrary {
     private(set) var assets: [MediaSource.ID: AVURLAsset] = [:]
-    /// Sources whose files can't be found (relinking comes in a later phase).
+    /// Sources whose files can't be found; the user can relink them.
     private(set) var missing: Set<MediaSource.ID> = []
 
     @ObservationIgnored private var accessedURLs: [URL] = []
@@ -45,6 +45,12 @@ final class MediaLibrary {
         if accessing { accessedURLs.append(url) }
         missing.remove(source.id)
         assets[source.id] = Self.makeAsset(url)
+    }
+
+    /// Keeps security-scoped access to `url` (e.g. a folder searched for
+    /// moved files) open until the project closes.
+    func keepAccess(to url: URL) {
+        accessedURLs.append(url)
     }
 
     func close() {
