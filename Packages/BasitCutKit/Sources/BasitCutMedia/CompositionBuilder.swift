@@ -60,7 +60,12 @@ public enum CompositionBuilder {
             composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
         }
 
-        let renderSize = (project.renderSize ?? firstSource.orientedSize).cgSize
+        // Every clip is fitted into the canvas (the first clip's upright frame),
+        // then the crop is cut out of it.
+        let canvas = (project.canvasSize ?? firstSource.orientedSize).cgSize
+        let crop = project.cropRect ?? PixelRect(x: 0, y: 0, width: canvas.width, height: canvas.height)
+        let renderSize = crop.size.cgSize
+        let cropShift = CGAffineTransform(translationX: -crop.x, y: -crop.y)
 
         // Insert media.
         var transforms: [Clip.ID: CGAffineTransform] = [:]
@@ -80,7 +85,7 @@ public enum CompositionBuilder {
                 let audioRange = try await clamped(item.clip.sourceRange.cmTimeRange, to: sourceAudio)
                 try audioTracks[item.index % 2].insertTimeRange(audioRange, of: sourceAudio, at: at)
             }
-            transforms[item.clip.id] = layerTransform(for: source, renderSize: renderSize)
+            transforms[item.clip.id] = layerTransform(for: source, renderSize: canvas).concatenating(cropShift)
         }
         let envelopes = Dictionary(uniqueKeysWithValues: layout.items.map { ($0.clip.id, layout.envelopes(for: $0)) })
 

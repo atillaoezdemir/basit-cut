@@ -139,11 +139,9 @@ extension Project {
         clips.first.flatMap { source(id: $0.sourceID) }
     }
 
-    /// Output frame size: the first clip's upright size, rounded to even numbers.
+    /// Output frame size: the cropped area of the first clip's upright frame
+    /// (the whole frame without a crop), rounded to even numbers.
     public var renderSize: Size? {
-        referenceSource.map { source in
-            let size = source.orientedSize
-            return Size(width: ExportPlan.even(size.width), height: ExportPlan.even(size.height))
-        }
+        cropRect?.size
     }
 }

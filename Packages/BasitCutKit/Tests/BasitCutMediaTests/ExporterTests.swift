@@ -87,6 +87,7 @@ struct ExporterTests {
         var project = Project()
         try TimelineEditor.insertClips(for: [a, a], in: &project)
         try TimelineEditor.trim(clip: project.clips[1].id, edge: .leading, to: RationalTime(seconds: 1), in: &project)
+        project.cover = TimelineEditor.coverFrame(at: RationalTime(seconds: 0.5), in: project)
         #expect(try ExportPlan.make(for: project, mode: .original) == .passthrough)
 
         let url = outputURL
@@ -98,6 +99,8 @@ struct ExporterTests {
         #expect(output.audioTrackCount == 1)
         #expect(output.codec == "avc1")
         try expectArchiveMetadata(output, url: url)
+        let artwork = try await AVURLAsset(url: url).load(.metadata).first { $0.identifier == .quickTimeMetadataArtwork }
+        #expect(try await artwork?.load(.dataValue)?.isEmpty == false)
     }
 
     @Test func passthroughKeepsRotation() async throws {

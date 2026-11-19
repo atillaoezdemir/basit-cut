@@ -14,6 +14,8 @@ enum TestVideoGenerator {
         var withAudio = true
         /// Constant brightness for every frame; `nil` makes it change per frame.
         var gray: UInt8?
+        /// Left and right halves in different grays (overrides `gray`).
+        var halves: (left: UInt8, right: UInt8)?
         var creationDate: Date?
         /// ISO 6709 location, e.g. "+48.8566+002.3522/".
         var location: String?
@@ -92,7 +94,8 @@ enum TestVideoGenerator {
 
             if videoReady && (videoTime <= audioTime || !audioReady) {
                 guard let pool = adaptor.pixelBufferPool else { throw GeneratorError.setupFailed }
-                let buffer = try makeFrame(pool: pool, gray: spec.gray ?? UInt8((frame * 8) % 256))
+                let gray = spec.gray ?? UInt8((frame * 8) % 256)
+                let buffer = try makeFrame(pool: pool, left: spec.halves?.left ?? gray, right: spec.halves?.right ?? gray)
                 guard adaptor.append(buffer, withPresentationTime: CMTime(value: Int64(frame), timescale: spec.fps)) else {
                     throw GeneratorError.writeFailed(writer.error)
                 }
@@ -128,13 +131,20 @@ enum TestVideoGenerator {
 
     // MARK: Private
 
-    private static func makeFrame(pool: CVPixelBufferPool, gray: UInt8) throws -> CVPixelBuffer {
+    private static func makeFrame(pool: CVPixelBufferPool, left: UInt8, right: UInt8) throws -> CVPixelBuffer {
         var buffer: CVPixelBuffer?
         CVPixelBufferPoolCreatePixelBuffer(nil, pool, &buffer)
         guard let buffer else { throw GeneratorError.setupFailed }
         CVPixelBufferLockBaseAddress(buffer, [])
         defer { CVPixelBufferUnlockBaseAddress(buffer, []) }
-        memset(CVPixelBufferGetBaseAddress(buffer), Int32(gray), CVPixelBufferGetDataSize(buffer))
+        guard let base = CVPixelBufferGetBaseAddress(buffer) else { throw GeneratorError.setupFailed }
+        let width = CVPixelBufferGetWidth(buffer), height = CVPixelBufferGetHeight(buffer)
+        let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
+        for row in 0..<height {
+            let line = base.advanced(by: row * bytesPerRow)
+            memset(line, Int32(left), width / 2 * 4)
+            memset(line.advanced(by: width / 2 * 4), Int32(right), (width - width / 2) * 4)
+        }
         return buffer
     }
 

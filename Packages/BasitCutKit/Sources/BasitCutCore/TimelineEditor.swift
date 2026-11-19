@@ -173,6 +173,20 @@ public enum TimelineEditor {
         }
     }
 
+    // MARK: Cover
+
+    /// The source frame shown at `time` on the timeline, as a cover. At the
+    /// very end of the timeline, the last frame of the last clip.
+    public static func coverFrame(at time: RationalTime, in project: Project) -> CoverFrame? {
+        let layout = TimelineLayout(project: project)
+        guard let last = layout.items.last else { return nil }
+        let item = layout.item(at: time) ?? (time >= layout.duration ? last : nil)
+        guard let item, let source = project.source(id: item.clip.sourceID) else { return nil }
+        let clamped = min(item.sourceTime(at: time), item.clip.sourceRange.end - source.frameDuration)
+        let frame = max(clamped, item.clip.sourceRange.start).floored(toMultipleOf: source.frameDuration)
+        return CoverFrame(sourceID: source.id, time: frame)
+    }
+
     // MARK: Helpers
 
     /// Runs `change` on the clip list and keeps a transition only if the same

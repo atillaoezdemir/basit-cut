@@ -30,7 +30,8 @@ public enum ExportError: LocalizedError {
 ///   and audio mix included) with `AVAssetReader` and encodes it with
 ///   `AVAssetWriter`, which allows exact bitrate settings.
 ///
-/// Metadata (date, location, camera) comes from the first clip. Cancelling
+/// Metadata (date, location, camera) comes from the first clip; the cover, if
+/// set, is embedded as artwork. Cancelling
 /// the calling task stops the export and deletes the partial file.
 public enum Exporter {
     public static func export(
@@ -44,7 +45,12 @@ public enum Exporter {
         guard let reference = project.referenceSource, let referenceAsset = assets[reference.id] else {
             throw CompositionError.emptyTimeline
         }
-        let metadata = await ArchiveMetadata.items(from: referenceAsset, fallbackCreationDate: reference.creationDate)
+        var metadata = await ArchiveMetadata.items(from: referenceAsset, fallbackCreationDate: reference.creationDate)
+        // A cover that can't be rendered (e.g. its source is missing) is left out.
+        if let cover = try? await CoverImage.render(project: project, assets: assets),
+           let jpeg = CoverImage.jpegData(cover) {
+            metadata.append(CoverImage.artworkItem(jpeg: jpeg))
+        }
 
         try? FileManager.default.removeItem(at: url)
         do {
