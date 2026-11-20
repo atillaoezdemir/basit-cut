@@ -13,6 +13,9 @@ struct TimelineView: View {
     @State private var reorder: ReorderDrag?
     @State private var trim: TrimDrag?
     @State private var magnifyStart: Double?
+    /// The time to keep under the pointer when zooming with ⌘ + scroll wheel
+    /// (otherwise zoom keeps the playhead centred).
+    @State private var zoomAnchor: (time: Double, x: Double)?
     /// The cut (identified by the clip before it) whose transition editor is open.
     @State private var editedCut: Clip.ID?
 
@@ -88,9 +91,20 @@ struct TimelineView: View {
             keepPlayheadVisible(x: time * pps)
         }
         .onChange(of: session.pointsPerSecond) { _, newValue in
-            let width = visible.upperBound - visible.lowerBound
-            scrollPosition.scrollTo(x: max(0, session.playback.displayTime * newValue - width / 2))
+            if let anchor = zoomAnchor {
+                zoomAnchor = nil
+                scrollPosition.scrollTo(x: max(0, anchor.time * newValue - anchor.x))
+            } else {
+                let width = visible.upperBound - visible.lowerBound
+                scrollPosition.scrollTo(x: max(0, session.playback.displayTime * newValue - width / 2))
+            }
         }
+        .background(ScrollZoomMonitor { factor, x in
+            let pps = session.pointsPerSecond
+            zoomAnchor = (time: (visible.lowerBound + x) / pps, x: x)
+            session.zoom(by: factor)
+            if session.pointsPerSecond == pps { zoomAnchor = nil }   // at a zoom limit
+        })
         .gesture(
             MagnifyGesture()
                 .onChanged { value in

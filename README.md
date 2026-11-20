@@ -38,7 +38,7 @@ It is deliberately limited: one video track, two kinds of transitions, two expor
 | ⇧⌘K | Set the current frame as the cover |
 | ⌘I | Import videos |
 | ⌘E | Export |
-| ⌘+ / ⌘− | Zoom the timeline |
+| ⌘+ / ⌘−, ⌘ + scroll wheel, pinch | Zoom the timeline |
 | ⌘N / ⌘O | New project / open project |
 | ⇧⌘P | Show the projects window |
 
