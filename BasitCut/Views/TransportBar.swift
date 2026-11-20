@@ -49,7 +49,9 @@ struct TransportBar: View {
 
             Divider().frame(height: 18)
 
-            Image(systemName: "minus.magnifyingglass").foregroundStyle(.secondary)
+            Button("Zoom Out", systemImage: "minus.magnifyingglass") { session.zoom(by: 1 / 1.5) }
+                .help("Zoom Out (⌘−)")
+                .disabled(session.pointsPerSecond <= session.zoomRange.lowerBound * 1.0001)
             Slider(
                 value: Binding(
                     get: { log(session.pointsPerSecond) },
@@ -59,7 +61,9 @@ struct TransportBar: View {
             )
             .frame(width: 120)
             .help("Timeline Zoom (⌘+ / ⌘−); all the way left shows the whole timeline")
-            Image(systemName: "plus.magnifyingglass").foregroundStyle(.secondary)
+            Button("Zoom In", systemImage: "plus.magnifyingglass") { session.zoom(by: 1.5) }
+                .help("Zoom In (⌘+)")
+                .disabled(session.pointsPerSecond >= session.zoomRange.upperBound * 0.9999)
         }
         .labelStyle(.iconOnly)
         .buttonStyle(.borderless)

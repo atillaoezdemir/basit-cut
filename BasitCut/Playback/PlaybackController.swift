@@ -32,6 +32,7 @@ final class PlaybackController {
     private var seekTarget: Double?
     @ObservationIgnored private var seekInFlight = false
     @ObservationIgnored private var queuedSeek: (time: Double, exact: Bool)?
+    @ObservationIgnored private var lastSeekTime: Double = 0
     @ObservationIgnored private var wasPausedBeforeFastForward = false
     @ObservationIgnored private var timeObserver: Any?
     @ObservationIgnored private var endObserver: NSObjectProtocol?
@@ -102,6 +103,10 @@ final class PlaybackController {
     func pause() {
         isPlaying = false
         player.pause()
+        // While paused, the playhead only moves by seeking; take the exact
+        // position playback stopped at.
+        let time = player.currentTime()
+        if seekTarget == nil, time.isNumeric { currentTime = min(max(time.seconds, 0), duration) }
     }
 
     /// Hold-to-fast-forward started. Playback runs at 2× until `endFastPlayback()`.
@@ -125,9 +130,9 @@ final class PlaybackController {
 
     // MARK: Seeking
 
-    /// Tolerant relative jump (used while an arrow key is held).
-    func jump(by delta: Double) {
-        seek(to: displayTime + delta, exact: false)
+    /// Relative jump from the playhead (arrow keys).
+    func jump(by delta: Double, exact: Bool) {
+        seek(to: displayTime + delta, exact: exact)
     }
 
     /// Exact seek to the current target (on key release / end of scrubbing).
@@ -162,6 +167,7 @@ final class PlaybackController {
 
     private func performSeek(to time: Double, exact: Bool) {
         seekInFlight = true
+        lastSeekTime = time
         let tolerance = exact ? CMTime.zero : CMTime(value: 1, timescale: 2)
         player.seek(
             to: CMTime(seconds: time, preferredTimescale: 90_000),
@@ -178,14 +184,19 @@ final class PlaybackController {
             queuedSeek = nil
             performSeek(to: next.time, exact: next.exact)
         } else {
-            let time = player.currentTime()
-            if time.isNumeric { currentTime = time.seconds }
+            // The playhead stays where it was asked to go. A tolerant seek may
+            // show a frame up to half a second away (often the start of a clip
+            // in the composition); reading that back would make the next jump
+            // start from the wrong place and get stuck at cuts.
+            currentTime = lastSeekTime
             seekTarget = nil
         }
     }
 
     private func timeDidChange(_ time: CMTime) {
-        guard seekTarget == nil, time.isNumeric else { return }
+        // Only playback moves the playhead. The observer also fires when a
+        // seek lands, with the frame it landed on, which would undo the above.
+        guard isPlaying, seekTarget == nil, time.isNumeric else { return }
         currentTime = time.seconds
     }
 

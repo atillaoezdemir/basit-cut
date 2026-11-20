@@ -100,7 +100,7 @@ final class KeyboardController {
     private func startJumping(_ direction: Double) {
         jumpTimer?.invalidate()
         jumpDirection = direction
-        jumpOnce()
+        jumpOnce(exact: true)
         // Own timer instead of the system key repeat: same speed for everyone.
         let timer = Timer(fire: Date(timeIntervalSinceNow: Self.repeatDelay), interval: Self.repeatInterval, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.jumpOnce() }
@@ -109,10 +109,12 @@ final class KeyboardController {
         jumpTimer = timer
     }
 
-    private func jumpOnce() {
+    /// A single press seeks exactly; repeats while held are tolerant (fast)
+    /// and end with one exact seek on release.
+    private func jumpOnce(exact: Bool = false) {
         // Shift is read live, so pressing/releasing it mid-hold switches the step.
         let step: Double = NSEvent.modifierFlags.contains(.shift) ? 30 : 5
-        playback.jump(by: jumpDirection * step)
+        playback.jump(by: jumpDirection * step, exact: exact)
     }
 
     private func stopJumping() {

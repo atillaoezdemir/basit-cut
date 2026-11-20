@@ -300,10 +300,14 @@ struct TimelineView: View {
         guard reorder == nil, trim == nil else { return }
         let width = visible.upperBound - visible.lowerBound
         guard width > 0 else { return }
-        if x > visible.upperBound {
-            scrollPosition.scrollTo(x: max(0, x - 40))
-        } else if x < visible.lowerBound {
-            scrollPosition.scrollTo(x: max(0, x - width + 40))
+        if x > visible.upperBound - 20 || x < visible.lowerBound {
+            if session.playback.isPlaying {
+                // Page along with playback.
+                scrollPosition.scrollTo(x: max(0, x - 40))
+            } else {
+                // A jump: centre the playhead so it's easy to find.
+                scrollPosition.scrollTo(x: max(0, x - width / 2))
+            }
         }
     }
 }
