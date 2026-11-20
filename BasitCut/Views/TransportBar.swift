@@ -53,12 +53,12 @@ struct TransportBar: View {
             Slider(
                 value: Binding(
                     get: { log(session.pointsPerSecond) },
-                    set: { session.pointsPerSecond = exp($0) }
+                    set: { session.setZoom(exp($0)) }
                 ),
-                in: log(ProjectSession.zoomRange.lowerBound)...log(ProjectSession.zoomRange.upperBound)
+                in: log(session.zoomRange.lowerBound)...log(session.zoomRange.upperBound)
             )
             .frame(width: 120)
-            .help("Timeline Zoom (⌘+ / ⌘−)")
+            .help("Timeline Zoom (⌘+ / ⌘−); all the way left shows the whole timeline")
             Image(systemName: "plus.magnifyingglass").foregroundStyle(.secondary)
         }
         .labelStyle(.iconOnly)

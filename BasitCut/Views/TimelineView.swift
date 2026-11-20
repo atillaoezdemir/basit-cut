@@ -86,12 +86,16 @@ struct TimelineView: View {
             geometry.contentOffset.x...(geometry.contentOffset.x + geometry.containerSize.width)
         } action: { _, newValue in
             visible = newValue
+            session.setTimelineWidth(newValue.upperBound - newValue.lowerBound)
         }
         .onChange(of: session.playback.displayTime) { _, time in
             keepPlayheadVisible(x: time * pps)
         }
         .onChange(of: session.pointsPerSecond) { _, newValue in
-            if let anchor = zoomAnchor {
+            if newValue <= session.zoomRange.lowerBound * 1.0001 {
+                zoomAnchor = nil
+                scrollPosition.scrollTo(x: 0)   // the whole timeline
+            } else if let anchor = zoomAnchor {
                 zoomAnchor = nil
                 scrollPosition.scrollTo(x: max(0, anchor.time * newValue - anchor.x))
             } else {
@@ -110,7 +114,7 @@ struct TimelineView: View {
                 .onChanged { value in
                     let start = magnifyStart ?? session.pointsPerSecond
                     magnifyStart = start
-                    session.pointsPerSecond = min(max(start * value.magnification, ProjectSession.zoomRange.lowerBound), ProjectSession.zoomRange.upperBound)
+                    session.setZoom(start * value.magnification)
                 }
                 .onEnded { _ in magnifyStart = nil }
         )

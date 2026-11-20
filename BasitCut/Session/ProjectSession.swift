@@ -49,8 +49,13 @@ final class ProjectSession {
         get { selection.count == 1 ? selection.first : nil }
         set { selection = newValue.map { [$0] } ?? [] }
     }
-    /// Timeline zoom.
-    var pointsPerSecond: Double = 40
+    /// Timeline zoom. Set it with `setZoom` so it stays in `zoomRange`.
+    private(set) var pointsPerSecond: Double = 40
+    /// Visible width of the timeline, reported by the timeline view.
+    private(set) var timelineWidth: Double = 0
+    /// Whether the zoom is at its lowest, where the whole timeline fits; it
+    /// then follows the timeline's length and the window's width.
+    @ObservationIgnored private var isZoomedToFit = false
     var isImporterPresented = false
     var isExportPresented = false
     /// Opens by itself when the project opens with missing files.
@@ -62,7 +67,7 @@ final class ProjectSession {
 
     @ObservationIgnored private var rebuildTask: Task<Void, Never>?
 
-    static let zoomRange: ClosedRange<Double> = 2...400
+    static let maximumZoom: Double = 400
 
     init(editor: ProjectEditor) {
         self.editor = editor
@@ -94,6 +99,7 @@ final class ProjectSession {
         }
         refreshLibrary()
         scheduleRebuild()
+        updateZoomRange()
     }
 
     // MARK: Relink
@@ -485,8 +491,40 @@ final class ProjectSession {
 
     // MARK: Zoom
 
+    /// From the zoom that shows the whole timeline in the visible width up to
+    /// `maximumZoom`.
+    var zoomRange: ClosedRange<Double> {
+        let fit = fittingZoom
+        return min(fit, Self.maximumZoom)...max(fit, Self.maximumZoom)
+    }
+
+    /// Points per second at which the whole timeline fits the visible width.
+    private var fittingZoom: Double {
+        let duration = TimelineLayout(project: project).duration.seconds
+        guard duration > 0, timelineWidth > 0 else { return 2 }
+        return max(0.001, (timelineWidth - 16) / duration)
+    }
+
+    func setZoom(_ value: Double) {
+        let range = zoomRange
+        pointsPerSecond = min(max(value, range.lowerBound), range.upperBound)
+        isZoomedToFit = pointsPerSecond <= range.lowerBound * 1.0001
+    }
+
     func zoom(by factor: Double) {
-        pointsPerSecond = min(max(pointsPerSecond * factor, Self.zoomRange.lowerBound), Self.zoomRange.upperBound)
+        setZoom(pointsPerSecond * factor)
+    }
+
+    func setTimelineWidth(_ width: Double) {
+        guard abs(width - timelineWidth) > 0.5 else { return }
+        timelineWidth = width
+        updateZoomRange()
+    }
+
+    /// Keeps a fitted zoom fitted (and any zoom in range) after the timeline's
+    /// length or width changed.
+    private func updateZoomRange() {
+        setZoom(isZoomedToFit ? zoomRange.lowerBound : pointsPerSecond)
     }
 
     // MARK: Composition
