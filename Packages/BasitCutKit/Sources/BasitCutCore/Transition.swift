@@ -19,7 +19,7 @@ public struct Transition: Hashable, Codable, Sendable {
 
     public static let minimumDuration = RationalTime(value: 1, timescale: 5)   // 0.2 s
     public static let maximumDuration = RationalTime.seconds(5)
-    public static let defaultDuration = RationalTime.seconds(1)
+    public static let defaultDuration = RationalTime(value: 3, timescale: 2)   // 1.5 s
 
     /// How much the two clips overlap on the timeline.
     public var overlap: RationalTime {

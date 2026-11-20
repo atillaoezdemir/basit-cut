@@ -83,14 +83,15 @@ struct TransitionRenderTests {
         return peak
     }
 
-    @Test func blackFadeGoesThroughBlack() async throws {
+    @Test func blackFadeDipsTowardsBlack() async throws {
         let built = try await build(Transition(kind: .blackFade, duration: .seconds(1)), grays: (200, 200))
-        // A fades over 1.5–2.0 s, B fades in over 2.0–2.5 s.
+        // A dims over 1.5–2.0 s, B brightens over 2.0–2.5 s; at the cut the
+        // picture is at `blackFadeFloor` (0.3), not black.
         #expect(try await brightness(built, at: 1.0) > 150)
-        #expect(try await brightness(built, at: 1.99) < 20)
-        #expect(try await brightness(built, at: 2.0) < 20)
+        let dimmest = try await brightness(built, at: 2.0)
+        #expect(dimmest > 35 && dimmest < 90)
         let halfway = try await brightness(built, at: 1.75)
-        #expect(halfway > 60 && halfway < 140)
+        #expect(halfway > dimmest + 20 && halfway < 175)
         #expect(try await brightness(built, at: 3.0) > 150)
 
         // The audio follows: silent around the cut, full in the middle of a clip.

@@ -77,7 +77,7 @@ struct Clip {
 struct Transition {
     enum Kind { case crossFade, blackFade }
     var kind: Kind
-    var duration: RationalTime    // 0.2 s – 5 s, default 1 s
+    var duration: RationalTime    // 0.2 s – 5 s, default 1.5 s
 }
 
 struct CropSetting {

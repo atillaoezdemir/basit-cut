@@ -1,5 +1,24 @@
 import Foundation
 
+extension Ramp {
+    /// An ease-in-out change from `from` to `to` over `range` (smoothstep),
+    /// as linear pieces: starts and ends gently, which looks and sounds softer
+    /// than one straight line.
+    public static func smooth(over range: TimeRange, from: Double, to: Double, pieces: Int = 8) -> [Ramp] {
+        guard range.duration > .zero, pieces > 1 else { return [Ramp(range: range, from: from, to: to)] }
+        func value(_ i: Int) -> Double {
+            let t = Double(i) / Double(pieces)
+            return from + (to - from) * (t * t * (3 - 2 * t))
+        }
+        func time(_ i: Int) -> RationalTime {
+            i == pieces ? range.end : range.start + range.duration.multiplied(by: Int64(i)).divided(by: Int32(pieces))
+        }
+        return (0..<pieces).map { i in
+            Ramp(range: TimeRange(start: time(i), end: time(i + 1)), from: value(i), to: value(i + 1))
+        }
+    }
+}
+
 /// A linear change of a value (opacity or volume) over a timeline range.
 public struct Ramp: Hashable, Sendable {
     public var range: TimeRange
@@ -58,12 +77,17 @@ extension TimelineLayout {
     /// Fade applied to the audio at a hard cut, so it doesn't click.
     public static let hardCutAudioFade = RationalTime(value: 3, timescale: 200)   // 15 ms
 
+    /// How bright the picture stays at the middle of a black fade (0 would be
+    /// fully black): a dip, not a blackout.
+    public static let blackFadeFloor = 0.3
+
     /// The fades of `item`, following its transitions:
     /// - **Cross fade:** the incoming clip is drawn on top and fades in over the
     ///   overlap; the outgoing one stays opaque underneath. Audio crossfades.
-    /// - **Black fade:** the outgoing clip fades to black over its last half,
-    ///   the incoming one fades in from black over its first half; the audio
-    ///   follows the picture.
+    /// - **Black fade:** the outgoing clip dims to `blackFadeFloor` over its last
+    ///   half, the incoming one brightens from it over its first half; the
+    ///   audio fades out and in.
+    /// Transition fades are ease-in-out curves (`Ramp.smooth`).
     /// - **Hard cut:** the picture cuts; the audio fades out and in over
     ///   `hardCutAudioFade` on both sides.
     public func envelopes(for item: Item) -> ClipEnvelopes {
@@ -78,28 +102,28 @@ extension TimelineLayout {
         var volumeRamps: [Ramp] = []
 
         // Fade in.
+        var initialOpacity = 1.0
         if let incoming {
-            let length = incoming.usagePerClip
-            let ramp = Ramp(range: TimeRange(start: item.start, duration: length), from: 0, to: 1)
-            opacityRamps.append(ramp)
-            volumeRamps.append(ramp)
+            let range = TimeRange(start: item.start, duration: incoming.usagePerClip)
+            initialOpacity = incoming.kind == .blackFade ? Self.blackFadeFloor : 0
+            opacityRamps += Ramp.smooth(over: range, from: initialOpacity, to: 1)
+            volumeRamps += Ramp.smooth(over: range, from: 0, to: 1)
         } else if hasPrevious {
             volumeRamps.append(Ramp(range: TimeRange(start: item.start, duration: cutFade), from: 0, to: 1))
         }
 
         // Fade out.
         if let outgoing {
-            let length = outgoing.usagePerClip
-            let ramp = Ramp(range: TimeRange(start: item.end - length, end: item.end), from: 1, to: 0)
+            let range = TimeRange(start: item.end - outgoing.usagePerClip, end: item.end)
             // In a cross fade the incoming clip covers this one.
-            if outgoing.kind == .blackFade { opacityRamps.append(ramp) }
-            volumeRamps.append(ramp)
+            if outgoing.kind == .blackFade { opacityRamps += Ramp.smooth(over: range, from: 1, to: Self.blackFadeFloor) }
+            volumeRamps += Ramp.smooth(over: range, from: 1, to: 0)
         } else if hasNext {
             volumeRamps.append(Ramp(range: TimeRange(start: item.end - cutFade, end: item.end), from: 1, to: 0))
         }
 
         return ClipEnvelopes(
-            opacity: Envelope(initialValue: incoming == nil ? 1 : 0, ramps: opacityRamps),
+            opacity: Envelope(initialValue: initialOpacity, ramps: opacityRamps),
             volume: Envelope(initialValue: hasPrevious ? 0 : 1, ramps: volumeRamps)
         )
     }
