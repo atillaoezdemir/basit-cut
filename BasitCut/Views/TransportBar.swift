@@ -4,10 +4,16 @@ import BasitCutCore
 /// Play/pause, time display, edit buttons and timeline zoom.
 struct TransportBar: View {
     @Bindable var session: ProjectSession
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         let playback = session.playback
         HStack(spacing: 12) {
+            Button("Projects", systemImage: "rectangle.stack") { openWindow(id: ProjectsWindow.id) }
+                .help("Show Projects (⇧⌘P)")
+
+            Divider().frame(height: 18)
+
             Button {
                 playback.togglePlayPause()
             } label: {

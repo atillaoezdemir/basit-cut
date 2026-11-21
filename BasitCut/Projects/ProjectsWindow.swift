@@ -89,15 +89,7 @@ struct ProjectsWindow: View {
                 }
             } else {
                 List(folder.projects, selection: $selection) { entry in
-                    HStack {
-                        Image(systemName: "film.stack").foregroundStyle(.secondary)
-                        Text(entry.name)
-                        Spacer()
-                        Text(entry.modificationDate, format: .relative(presentation: .named))
-                            .foregroundStyle(.secondary)
-                            .font(.callout)
-                    }
-                    .padding(.vertical, 3)
+                    ProjectRow(entry: entry) { pendingTrash = entry }
                 }
                 .contextMenu(forSelectionType: ProjectEntry.ID.self) { ids in
                     if let entry = entry(ids.first) {
@@ -194,5 +186,33 @@ struct ProjectsWindow: View {
 
     private func perform(_ action: () throws -> Void) {
         do { try action() } catch { errorMessage = error.localizedDescription }
+    }
+}
+
+/// One project in the list; a trash button appears while the pointer is over it.
+private struct ProjectRow: View {
+    let entry: ProjectEntry
+    let onTrash: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        HStack {
+            Image(systemName: "film.stack").foregroundStyle(.secondary)
+            Text(entry.name)
+            Spacer()
+            Text(entry.modificationDate, format: .relative(presentation: .named))
+                .foregroundStyle(.secondary)
+                .font(.callout)
+            Button("Move to Trash", systemImage: "trash", action: onTrash)
+                .labelStyle(.iconOnly)
+                .buttonStyle(.borderless)
+                .help("Move to Trash")
+                .opacity(isHovered ? 1 : 0)
+                .allowsHitTesting(isHovered)
+                .accessibilityHidden(!isHovered)
+        }
+        .padding(.vertical, 3)
+        .contentShape(Rectangle())
+        .onHover { isHovered = $0 }
     }
 }
