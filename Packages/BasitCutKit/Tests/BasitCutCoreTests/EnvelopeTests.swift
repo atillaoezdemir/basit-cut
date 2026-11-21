@@ -46,8 +46,16 @@ struct EnvelopeTests {
         // Ease in-out: slower than linear near the ends.
         #expect(clips[1].opacity.value(at: s(3.125)) < 0.125)
         // Audio crossfades over the same range.
-        #expect(clips[0].volume.ramps == Ramp.smooth(over: overlap, from: 1, to: 0))
-        #expect(clips[1].volume.ramps == Ramp.smooth(over: overlap, from: 0, to: 1))
+        #expect(clips[0].volume.ramps == Ramp.equalPower(over: overlap, fadeIn: false))
+        #expect(clips[1].volume.ramps == Ramp.equalPower(over: overlap, fadeIn: true))
+        // Equal power: no loudness dip in the middle (gains squared sum to 1).
+        for t in stride(from: 3.0, through: 4.0, by: 0.125) {
+            let a = clips[0].volume.value(at: s(t)), b = clips[1].volume.value(at: s(t))
+            let power = a * a + b * b
+            #expect(abs(power - 1) < 1e-9)
+        }
+        #expect(clips[0].volume.value(at: s(4)) == 0)
+        #expect(clips[1].volume.value(at: s(4)) == 1)
     }
 
     @Test func blackFadeSplitsItsDurationBetweenTheClips() throws {
@@ -56,10 +64,10 @@ struct EnvelopeTests {
         let into = TimeRange(start: s(4), end: s(5))
         let floor = TimelineLayout.blackFadeFloor
         #expect(clips[0].opacity.ramps == Ramp.smooth(over: out, from: 1, to: floor))
-        #expect(clips[0].volume.ramps == Ramp.smooth(over: out, from: 1, to: 0))
+        #expect(clips[0].volume.ramps == Ramp.equalPower(over: out, fadeIn: false))
         #expect(clips[1].opacity.initialValue == floor)
         #expect(clips[1].opacity.ramps == Ramp.smooth(over: into, from: floor, to: 1))
-        #expect(clips[1].volume.ramps == Ramp.smooth(over: into, from: 0, to: 1))
+        #expect(clips[1].volume.ramps == Ramp.equalPower(over: into, fadeIn: true))
         // At the cut the picture is dimmed (not black) and the sound silent.
         #expect(abs(clips[0].opacity.value(at: s(4)) - floor) < 1e-9)
         #expect(abs(clips[1].opacity.value(at: s(4)) - floor) < 1e-9)

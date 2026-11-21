@@ -2,19 +2,35 @@ import Foundation
 
 extension Ramp {
     /// An ease-in-out change from `from` to `to` over `range` (smoothstep),
-    /// as linear pieces: starts and ends gently, which looks and sounds softer
-    /// than one straight line.
+    /// as linear pieces: starts and ends gently, which looks softer than one
+    /// straight line.
     public static func smooth(over range: TimeRange, from: Double, to: Double, pieces: Int = 8) -> [Ramp] {
-        guard range.duration > .zero, pieces > 1 else { return [Ramp(range: range, from: from, to: to)] }
-        func value(_ i: Int) -> Double {
-            let t = Double(i) / Double(pieces)
-            return from + (to - from) * (t * t * (3 - 2 * t))
+        curve(over: range, pieces: pieces) { t in from + (to - from) * (t * t * (3 - 2 * t)) }
+    }
+
+    /// An equal-power audio fade over `range`, as linear pieces: a fade in
+    /// follows sin(t·π/2), a fade out cos(t·π/2). Two of them overlapping keep
+    /// the combined loudness steady (sin² + cos² = 1), the way music players
+    /// crossfade songs; a single one keeps the sound up longer and lets it go
+    /// gently, instead of thinning it out early.
+    public static func equalPower(over range: TimeRange, fadeIn: Bool, pieces: Int = 8) -> [Ramp] {
+        curve(over: range, pieces: pieces) { t in
+            // Exact end points: cos(π/2) isn't exactly 0 in floating point.
+            if t <= 0 { return fadeIn ? 0 : 1 }
+            if t >= 1 { return fadeIn ? 1 : 0 }
+            return fadeIn ? sin(t * .pi / 2) : cos(t * .pi / 2)
         }
+    }
+
+    /// `value(t)` for t in 0...1 over `range`, as `pieces` linear ramps.
+    private static func curve(over range: TimeRange, pieces: Int, value: (Double) -> Double) -> [Ramp] {
+        func v(_ i: Int) -> Double { value(Double(i) / Double(pieces)) }
+        guard range.duration > .zero, pieces > 1 else { return [Ramp(range: range, from: value(0), to: value(1))] }
         func time(_ i: Int) -> RationalTime {
             i == pieces ? range.end : range.start + range.duration.multiplied(by: Int64(i)).divided(by: Int32(pieces))
         }
         return (0..<pieces).map { i in
-            Ramp(range: TimeRange(start: time(i), end: time(i + 1)), from: value(i), to: value(i + 1))
+            Ramp(range: TimeRange(start: time(i), end: time(i + 1)), from: v(i), to: v(i + 1))
         }
     }
 }
@@ -87,7 +103,9 @@ extension TimelineLayout {
     /// - **Black fade:** the outgoing clip dims to `blackFadeFloor` over its last
     ///   half, the incoming one brightens from it over its first half; the
     ///   audio fades out and in.
-    /// Transition fades are ease-in-out curves (`Ramp.smooth`).
+    /// Picture fades are ease-in-out curves (`Ramp.smooth`); audio fades are
+    /// equal-power curves (`Ramp.equalPower`), so a cross fade keeps the
+    /// loudness steady instead of dipping in the middle.
     /// - **Hard cut:** the picture cuts; the audio fades out and in over
     ///   `hardCutAudioFade` on both sides.
     public func envelopes(for item: Item) -> ClipEnvelopes {
@@ -107,7 +125,7 @@ extension TimelineLayout {
             let range = TimeRange(start: item.start, duration: incoming.usagePerClip)
             initialOpacity = incoming.kind == .blackFade ? Self.blackFadeFloor : 0
             opacityRamps += Ramp.smooth(over: range, from: initialOpacity, to: 1)
-            volumeRamps += Ramp.smooth(over: range, from: 0, to: 1)
+            volumeRamps += Ramp.equalPower(over: range, fadeIn: true)
         } else if hasPrevious {
             volumeRamps.append(Ramp(range: TimeRange(start: item.start, duration: cutFade), from: 0, to: 1))
         }
@@ -117,7 +135,7 @@ extension TimelineLayout {
             let range = TimeRange(start: item.end - outgoing.usagePerClip, end: item.end)
             // In a cross fade the incoming clip covers this one.
             if outgoing.kind == .blackFade { opacityRamps += Ramp.smooth(over: range, from: 1, to: Self.blackFadeFloor) }
-            volumeRamps += Ramp.smooth(over: range, from: 1, to: 0)
+            volumeRamps += Ramp.equalPower(over: range, fadeIn: false)
         } else if hasNext {
             volumeRamps.append(Ramp(range: TimeRange(start: item.end - cutFade, end: item.end), from: 1, to: 0))
         }
