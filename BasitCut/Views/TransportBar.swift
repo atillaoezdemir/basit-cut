@@ -33,14 +33,9 @@ struct TransportBar: View {
 
             Spacer()
 
-            Button("Import", systemImage: "plus") { session.isImporterPresented = true }
-                .help("Import Videos (⌘I)")
             Button("Split", systemImage: "scissors") { session.splitAtPlayhead() }
                 .help("Split at Playhead (⌘B)")
                 .disabled(!session.canSplit)
-            Button("Delete", systemImage: "trash") { session.deleteSelectedClips() }
-                .help("Delete Selected Clips (⌫)")
-                .disabled(session.selection.isEmpty)
 
             Button("Crop", systemImage: "crop") { session.beginCropEditing() }
                 .help("Aspect Ratio and Crop")
