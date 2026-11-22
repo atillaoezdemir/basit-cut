@@ -74,6 +74,45 @@ struct EnvelopeTests {
         #expect(clips[1].volume.value(at: s(4)) == 0)
     }
 
+    @Test func blackFadeCrossfadesTheSoundWhenTheSourcesReachAcrossTheCut() throws {
+        // One 10 s source split at 4 s: both clips have material beyond the cut.
+        var project = Fixture.project(clipSeconds: [10])
+        _ = try TimelineEditor.split(at: s(4), in: &project)
+        try TimelineEditor.setTransition(Transition(kind: .blackFade, duration: s(2)), after: project.clips[0].id, in: &project)
+        let layout = TimelineLayout(project: project)
+        #expect(layout.items[0].audioTail == s(1))
+        #expect(layout.items[1].audioLeadIn == s(1))
+        #expect(layout.items[0].audioRange == TimeRange(start: s(0), end: s(5)))
+        #expect(layout.items[1].audioSourceRange == TimeRange(start: s(3), end: s(10)))
+        #expect(layout.duration == s(10))   // the picture timing doesn't change
+
+        let clips = layout.items.map { layout.envelopes(for: $0) }
+        let both = TimeRange(start: s(3), end: s(5))
+        #expect(clips[0].volume.ramps == Ramp.equalPower(over: both, fadeIn: false))
+        #expect(clips[1].volume.ramps == Ramp.equalPower(over: both, fadeIn: true))
+        // No silence at the cut: equal power across the whole transition.
+        for t in stride(from: 3.0, through: 5.0, by: 0.25) {
+            let a = clips[0].volume.value(at: s(t)), b = clips[1].volume.value(at: s(t))
+            #expect(abs(a * a + b * b - 1) < 1e-9)
+        }
+        // The picture still dips to the floor at the cut.
+        #expect(abs(clips[1].opacity.value(at: s(4)) - TimelineLayout.blackFadeFloor) < 1e-9)
+    }
+
+    @Test func blackFadeUsesOnlyTheSourceMaterialThereIs() throws {
+        // Clip A ends 0.4 s before its source does; clip B starts at its source's start.
+        var project = Fixture.project(clipSeconds: [10, 6])
+        _ = try TimelineEditor.split(at: s(9.6), in: &project)
+        try TimelineEditor.delete(clips: [project.clips[1].id], in: &project)
+        try TimelineEditor.setTransition(Transition(kind: .blackFade, duration: s(2)), after: project.clips[0].id, in: &project)
+        let layout = TimelineLayout(project: project)
+        #expect(layout.items[0].audioTail == s(0.4))
+        #expect(layout.items[1].audioLeadIn == .zero)
+        let clips = layout.items.map { layout.envelopes(for: $0) }
+        #expect(clips[0].volume.ramps == Ramp.equalPower(over: TimeRange(start: s(8.6), end: s(10)), fadeIn: false))
+        #expect(clips[1].volume.ramps == Ramp.equalPower(over: TimeRange(start: s(9.6), end: s(10.6)), fadeIn: true))
+    }
+
     @Test func middleClipFadesInAndOut() throws {
         let clips = envelopes(try project([4, 4, 4], transitions: [
             Transition(kind: .crossFade, duration: s(1)),

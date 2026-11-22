@@ -82,8 +82,12 @@ public enum CompositionBuilder {
             try videoTracks[item.index % 2].insertTimeRange(range, of: sourceVideo, at: at)
 
             if let sourceAudio = try await asset.loadTracks(withMediaType: .audio).first {
-                let audioRange = try await clamped(item.clip.sourceRange.cmTimeRange, to: sourceAudio)
-                try audioTracks[item.index % 2].insertTimeRange(audioRange, of: sourceAudio, at: at)
+                // The sound can reach past the picture at black fades.
+                let wanted = item.audioSourceRange.cmTimeRange
+                let audioRange = try await clamped(wanted, to: sourceAudio)
+                // If the audio track starts later than asked, keep it in sync.
+                let audioAt = item.audioRange.start.cmTime + (audioRange.start - wanted.start)
+                try audioTracks[item.index % 2].insertTimeRange(audioRange, of: sourceAudio, at: audioAt)
             }
             transforms[item.clip.id] = layerTransform(for: source, renderSize: canvas).concatenating(cropShift)
         }

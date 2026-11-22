@@ -101,6 +101,24 @@ struct TransitionRenderTests {
         #expect(atCut < middle * 0.1)
     }
 
+    @Test func blackFadeCrossfadesTheSoundWhenThereIsMaterial() async throws {
+        // One 4 s source split in the middle: the sound can reach across the cut.
+        let (a, asset) = try await makeSource(gray: 200, seconds: 4)
+        var project = Project()
+        try TimelineEditor.insertClips(for: [a], in: &project)
+        _ = try TimelineEditor.split(at: .seconds(2), in: &project)
+        try TimelineEditor.setTransition(Transition(kind: .blackFade, duration: .seconds(1)), after: project.clips[0].id, in: &project)
+        let built = try await CompositionBuilder.build(project: project, assets: [a.id: asset])
+
+        #expect(abs(built.composition.duration.seconds - 4) < 0.05)
+        // Both sounds play at the cut, so it isn't silent.
+        let atCut = try await audioPeak(built, from: 1.98, to: 2.02)
+        let middle = try await audioPeak(built, from: 0.9, to: 1.1)
+        #expect(atCut > middle * 0.5)
+        // The picture still dips.
+        #expect(try await brightness(built, at: 2.0) < 90)
+    }
+
     @Test func crossFadeBlendsBothClips() async throws {
         let built = try await build(Transition(kind: .crossFade, duration: .seconds(1)), grays: (40, 220))
         // Overlap: 1.0–2.0 s on a 3 s timeline.

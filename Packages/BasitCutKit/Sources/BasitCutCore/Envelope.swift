@@ -101,8 +101,10 @@ extension TimelineLayout {
     /// - **Cross fade:** the incoming clip is drawn on top and fades in over the
     ///   overlap; the outgoing one stays opaque underneath. Audio crossfades.
     /// - **Black fade:** the outgoing clip dims to `blackFadeFloor` over its last
-    ///   half, the incoming one brightens from it over its first half; the
-    ///   audio fades out and in.
+    ///   half, the incoming one brightens from it over its first half. The
+    ///   sounds crossfade over the whole transition where the sources have
+    ///   material beyond the clips (`audioTail`, `audioLeadIn`); otherwise
+    ///   they fade out to the cut and in from it.
     /// Picture fades are ease-in-out curves (`Ramp.smooth`); audio fades are
     /// equal-power curves (`Ramp.equalPower`), so a cross fade keeps the
     /// loudness steady instead of dipping in the middle.
@@ -125,7 +127,9 @@ extension TimelineLayout {
             let range = TimeRange(start: item.start, duration: incoming.usagePerClip)
             initialOpacity = incoming.kind == .blackFade ? Self.blackFadeFloor : 0
             opacityRamps += Ramp.smooth(over: range, from: initialOpacity, to: 1)
-            volumeRamps += Ramp.equalPower(over: range, fadeIn: true)
+            // The sound may start early (black fade lead-in) to crossfade.
+            let soundRange = TimeRange(start: item.start - item.audioLeadIn, end: range.end)
+            volumeRamps += Ramp.equalPower(over: soundRange, fadeIn: true)
         } else if hasPrevious {
             volumeRamps.append(Ramp(range: TimeRange(start: item.start, duration: cutFade), from: 0, to: 1))
         }
@@ -135,7 +139,9 @@ extension TimelineLayout {
             let range = TimeRange(start: item.end - outgoing.usagePerClip, end: item.end)
             // In a cross fade the incoming clip covers this one.
             if outgoing.kind == .blackFade { opacityRamps += Ramp.smooth(over: range, from: 1, to: Self.blackFadeFloor) }
-            volumeRamps += Ramp.equalPower(over: range, fadeIn: false)
+            // The sound may continue past the cut (black fade tail) to crossfade.
+            let soundRange = TimeRange(start: range.start, end: item.end + item.audioTail)
+            volumeRamps += Ramp.equalPower(over: soundRange, fadeIn: false)
         } else if hasNext {
             volumeRamps.append(Ramp(range: TimeRange(start: item.end - cutFade, end: item.end), from: 1, to: 0))
         }
