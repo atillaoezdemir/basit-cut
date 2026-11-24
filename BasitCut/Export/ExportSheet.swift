@@ -14,6 +14,7 @@ struct ExportSheet: View {
     let defaultName: String
     @Environment(\.dismiss) private var dismiss
     @State private var coverThumbnail: CGImage?
+    @State private var isComparing = false
 
     private var export: ExportController { session.export }
 
@@ -35,6 +36,9 @@ struct ExportSheet: View {
         .padding(20)
         .frame(width: 500)
         .interactiveDismissDisabled(export.isExporting)
+        .sheet(isPresented: $isComparing) {
+            ComparisonSheet(session: session)
+        }
         .task(id: CoverKey(cover: session.project.cover, crop: session.project.crop)) {
             coverThumbnail = await session.coverThumbnail()
         }
@@ -76,6 +80,16 @@ struct ExportSheet: View {
                 .foregroundStyle(.secondary)
 
             HStack {
+                Button("Compare…") { isComparing = true }
+                    .disabled(!session.comparison.isReady)
+                    .help("Play ten seconds in both qualities, side by side")
+                if session.comparison.isPreparing {
+                    ProgressView().controlSize(.small)
+                } else if let error = session.comparison.error {
+                    Image(systemName: "exclamationmark.triangle")
+                        .foregroundStyle(.secondary)
+                        .help(error)
+                }
                 Spacer()
                 Button("Cancel", role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)

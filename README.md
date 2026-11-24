@@ -17,7 +17,7 @@ It is deliberately limited: one video track, two kinds of transitions, two expor
 
 **Export:**
 
-![The export sheet in Original quality mode](docs/images/export.png)
+![The export sheet in Space saving mode](docs/images/export.png)
 
 </details>
 
@@ -33,6 +33,7 @@ It is deliberately limited: one video track, two kinds of transitions, two expor
 - **Export:**
   - **Original quality:** same codec, resolution, frame rate and average bitrate as the source. Without transitions or a crop, the video is copied without re-encoding (lossless and fast).
   - **Space saving:** HEVC, at most 1080p (orientation kept), at most 4 Mbit/s and at most 60% of the bitrate of H.264 sources (HEVC needs less data), AAC audio.
+  - **Compare:** plays ten seconds of the first video in both modes in one picture with a draggable divider and zoom. The sample is prepared in the background, so there is nothing to wait for.
   - Both modes keep the metadata of the first clip: creation date, location, camera make and model.
 - **Missing files:** if videos were moved or a drive is disconnected, the project tells you which files are missing. You can locate each one, or pick a folder and basit-cut finds all of them by name.
 

@@ -35,6 +35,7 @@ final class ProjectSession {
     let library = MediaLibrary()
     let playback = PlaybackController()
     let export = ExportController()
+    let comparison = ComparisonController()
     @ObservationIgnored private(set) lazy var keyboard: KeyboardController = {
         let keyboard = KeyboardController(playback: playback)
         keyboard.onSelectAll = { [weak self] in self?.selectAllClips() }
@@ -80,12 +81,14 @@ final class ProjectSession {
     func start() {
         refreshLibrary()
         scheduleRebuild(delay: .zero)
+        updateComparison()
         if !missingSources.isEmpty { isRelinkPresented = true }
     }
 
     func close() {
         rebuildTask?.cancel()
         export.cancel()
+        comparison.close()
         keyboard.detach()
         playback.invalidate()
         library.close()
@@ -99,6 +102,7 @@ final class ProjectSession {
         }
         refreshLibrary()
         scheduleRebuild()
+        updateComparison()
         updateZoomRange()
     }
 
@@ -183,6 +187,11 @@ final class ProjectSession {
             return
         }
         export.start(project: project, assets: library.assets, to: url)
+    }
+
+    /// Keeps the export comparison's samples up to date in the background.
+    private func updateComparison() {
+        comparison.update(project: project, assets: library.assets)
     }
 
     // MARK: Import

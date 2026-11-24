@@ -76,6 +76,26 @@ public enum Exporter {
         progress(1)
     }
 
+    /// Encodes `project` with exactly these settings, without metadata: a
+    /// sample of what an export will look like. A failed or cancelled sample
+    /// leaves no file behind.
+    public static func encodeSample(
+        project: Project,
+        assets: [MediaSource.ID: AVAsset],
+        settings: ExportSettings,
+        to url: URL
+    ) async throws {
+        do {
+            let built = try await CompositionBuilder.build(project: project, assets: assets)
+            try Task.checkCancellation()
+            let job = try await ReencodeJob(built: built, settings: settings, metadata: [], url: url)
+            try await job.run(progress: { _ in })
+        } catch {
+            try? FileManager.default.removeItem(at: url)
+            throw error
+        }
+    }
+
     // MARK: Passthrough
 
     private static func exportPassthrough(

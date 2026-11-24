@@ -240,4 +240,19 @@ struct ExporterTests {
         #expect(throws: CancellationError.self) { try result.get() }
         #expect(!FileManager.default.fileExists(atPath: url.path))
     }
+
+    @Test func encodesAComparisonSample() async throws {
+        let (source, asset) = try await makeSource(.init(seconds: 3))
+        var project = Project()
+        try TimelineEditor.insertClips(for: [source], in: &project)
+        let sample = try #require(ComparisonSample(project: project)?.project(from: project))
+        guard case .reencode(let settings) = try ExportPlan.make(for: project, mode: .spaceSaving) else {
+            Issue.record("expected re-encode"); return
+        }
+        let url = outputURL
+        try await Exporter.encodeSample(project: sample, assets: [source.id: asset], settings: settings, to: url)
+        let output = try await inspectOutput(url)
+        #expect(abs(output.duration - 3) < 0.1)
+        #expect(output.codec.hasPrefix("hvc"))
+    }
 }
