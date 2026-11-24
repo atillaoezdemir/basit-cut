@@ -19,6 +19,10 @@ It is deliberately limited: one video track, two kinds of transitions, two expor
 
 ![The export sheet in Space saving mode](docs/images/export.png)
 
+**Compare**, both export modes side by side:
+
+![The compare window: Original quality left of the divider, Space saving right of it](docs/images/compare.png)
+
 </details>
 
 ## Features
