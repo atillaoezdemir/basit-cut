@@ -21,8 +21,12 @@ struct TimelineView: View {
 
     private static let space = "timeline"
     private let rulerHeight: Double = 22
-    private let trackTop: Double = 30
-    private let trackHeight: Double = 64
+    private let trackTop: Double = Self.trackTop
+    private let trackHeight: Double = Self.trackHeight
+    private static let trackTop: Double = 30
+    private static let trackHeight: Double = 64
+    /// The whole timeline; the window gives it exactly this height.
+    static let height: Double = trackTop + trackHeight + 10
 
     private struct ReorderDrag {
         var clipID: Clip.ID
@@ -38,8 +42,11 @@ struct TimelineView: View {
     var body: some View {
         let layout = TimelineLayout(project: displayedProject)
         let pps = session.pointsPerSecond
-        let contentWidth = max(layout.duration.seconds * pps + 400, visible.upperBound - visible.lowerBound)
-        let height = trackTop + trackHeight + 10
+        // Some room after the last clip, except when everything fits: then
+        // there is nothing to scroll.
+        let isFitted = pps <= session.zoomRange.lowerBound * 1.0001
+        let contentWidth = max(layout.duration.seconds * pps + (isFitted ? 0 : 400), visible.upperBound - visible.lowerBound)
+        let height = Self.height
 
         ScrollView(.horizontal) {
             ZStack(alignment: .topLeading) {
@@ -81,6 +88,7 @@ struct TimelineView: View {
                 }
             )
         }
+        .scrollIndicators(.never)
         .scrollPosition($scrollPosition)
         .onScrollGeometryChange(for: ClosedRange<Double>.self) { geometry in
             geometry.contentOffset.x...(geometry.contentOffset.x + geometry.containerSize.width)

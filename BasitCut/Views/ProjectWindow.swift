@@ -40,7 +40,7 @@ struct ProjectWindow: View {
                 TransportBar(session: session)
                 Divider()
                 TimelineView(session: session)
-                    .frame(height: 130)
+                    .frame(height: TimelineView.height)
             }
         }
         .frame(minWidth: 720, minHeight: 480)
