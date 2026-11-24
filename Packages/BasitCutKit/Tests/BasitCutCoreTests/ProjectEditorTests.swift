@@ -24,7 +24,7 @@ struct ProjectEditorTests {
 
         try step(undoManager) { _ = try editor.perform("Split") { try TimelineEditor.split(at: s(2), in: &$0) } }
         let afterSplit = editor.project
-        try step(undoManager) { try editor.perform("Delete") { try TimelineEditor.delete(clips: [afterSplit.clips[0].id], in: &$0) } }
+        try step(undoManager) { try editor.perform("Delete") { _ = try TimelineEditor.delete(clips: [afterSplit.clips[0].id], in: &$0) } }
         #expect(editor.project.clips.count == 2)
         #expect(undoManager.undoActionName == "Delete")
 

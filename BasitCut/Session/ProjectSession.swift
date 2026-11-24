@@ -302,10 +302,19 @@ final class ProjectSession {
         }
     }
 
+    /// Deletes the selection and puts the playhead where the timeline closes up.
     func deleteSelectedClips() {
         guard let index = project.clips.firstIndex(where: { selection.contains($0.id) }) else { return }
         let ids = selection
-        try? editor.perform(ids.count == 1 ? "Delete Clip" : "Delete Clips") { try TimelineEditor.delete(clips: ids, in: &$0) }
+        let join = try? editor.perform(ids.count == 1 ? "Delete Clip" : "Delete Clips") {
+            try TimelineEditor.delete(clips: ids, in: &$0)
+        }
+        // Paused, so the playhead stays exactly at the join while the preview
+        // is rebuilt.
+        if let join {
+            playback.pause()
+            playback.seek(to: join.seconds, exact: true)
+        }
         let clips = project.clips
         selectedClipID = clips.isEmpty ? nil : clips[min(index, clips.count - 1)].id
     }

@@ -111,12 +111,19 @@ public enum TimelineEditor {
 
     // MARK: Delete & reorder
 
-    public static func delete(clips clipIDs: Set<Clip.ID>, in project: inout Project) throws {
+    /// Returns where the timeline closes up: the start of the clip that now
+    /// follows the (first) gap, or the end of the timeline if none does.
+    @discardableResult
+    public static func delete(clips clipIDs: Set<Clip.ID>, in project: inout Project) throws -> RationalTime {
         guard clipIDs.allSatisfy({ project.clipIndex(id: $0) != nil }) else { throw TimelineEditError.clipNotFound }
+        let gap = project.clips.firstIndex { clipIDs.contains($0.id) }
         preservingTransitions(in: &project) { clips in
             clips.removeAll { clipIDs.contains($0.id) }
         }
         removeUnusedSources(in: &project)
+        let layout = TimelineLayout(project: project)
+        guard let gap, gap < layout.items.count else { return layout.duration }
+        return layout.items[gap].start
     }
 
     /// Moves a clip so that it ends up at `destination` in the resulting order.

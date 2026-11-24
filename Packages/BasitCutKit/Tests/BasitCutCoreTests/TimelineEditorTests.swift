@@ -101,6 +101,26 @@ struct TimelineEditorTests {
         #expect(project.sources.count == 2, "unused source is dropped")
     }
 
+    @Test func deleteReturnsWhereTheTimelineClosesUp() throws {
+        func join(deleting indices: Set<Int>, fadeAfterFirst: Bool = false) throws -> RationalTime {
+            var project = Fixture.project(clipSeconds: [2, 3, 4, 5])
+            let ids = project.clips.map(\.id)
+            if fadeAfterFirst {
+                try TimelineEditor.setTransition(Transition(kind: .crossFade, duration: s(1)), after: ids[0], in: &project)
+            }
+            return try TimelineEditor.delete(clips: Set(indices.map { ids[$0] }), in: &project)
+        }
+        #expect(try join(deleting: [0]) == .zero)
+        #expect(try join(deleting: [1]) == s(2))
+        #expect(try join(deleting: [1, 2]) == s(2))
+        #expect(try join(deleting: [1, 3]) == s(2), "the first of several gaps")
+        #expect(try join(deleting: [3]) == s(9), "the end of the timeline")
+        #expect(try join(deleting: [0, 1, 2, 3]) == .zero)
+        // Earlier cross fades shorten the timeline; a deleted one doesn't.
+        #expect(try join(deleting: [2], fadeAfterFirst: true) == s(4))
+        #expect(try join(deleting: [1], fadeAfterFirst: true) == s(2))
+    }
+
     @Test func deleteUnknownClipThrows() {
         var project = Fixture.project(clipSeconds: [2])
         #expect(throws: TimelineEditError.clipNotFound) { try TimelineEditor.delete(clips: [UUID()], in: &project) }
