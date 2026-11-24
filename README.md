@@ -1,12 +1,25 @@
-# basit-cut
+<img src="docs/images/icon.png" width="128" alt="basit-cut app icon">
 
-*basit* is Turkish for *simple*.
+# basit-cut
 
 A small, non-destructive video editor for macOS, made for one job: turning a personal video archive (phone clips, camera files, old recordings) into a few clean, well-kept files. Cut out the boring parts, join clips, add a fade, crop for a phone screen, and export without losing quality or the original date and location.
 
 It is deliberately limited: one video track, two kinds of transitions, two export modes. No effects, titles or color grading.
 
-> Screenshots will be added here.
+![The editor: preview, transport bar and a timeline with three clips, a cross fade and a black fade](docs/images/editor.png)
+
+<details>
+<summary>More screenshots</summary>
+
+**Crop**, directly on the preview:
+
+![Cropping a landscape video to 9:16](docs/images/crop.png)
+
+**Export:**
+
+![The export sheet in Original quality mode](docs/images/export.png)
+
+</details>
 
 ## Features
 
