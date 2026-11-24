@@ -445,7 +445,7 @@ final class ProjectSession {
     }
 
     /// What the preview plays: the project, uncropped while the crop is edited.
-    private var previewProject: Project {
+    var previewProject: Project {
         var preview = project
         if isEditingCrop { preview.crop = .original }
         return preview

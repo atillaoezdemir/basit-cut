@@ -101,7 +101,6 @@ struct ProjectWindow: View {
     @ViewBuilder
     private var preview: some View {
         ZStack {
-            Color.black
             if session.project.clips.isEmpty {
                 ContentUnavailableView {
                     Label("No Clips Yet", systemImage: "film.stack")
@@ -110,19 +109,11 @@ struct ProjectWindow: View {
                 } actions: {
                     Button("Import Videos…") { session.isImporterPresented = true }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(.black)
                 .colorScheme(.dark)
             } else {
-                PlayerView(player: session.playback.player)
-                if let draft = session.cropDraft, draft.mode != .original, let canvas = session.project.canvasSize {
-                    // Laid out like the player's aspect-fit video, so the
-                    // rectangle sits exactly on the uncropped frame.
-                    CropOverlay(
-                        rect: Binding(get: { draft.rect }, set: { session.updateCropDraft($0) }),
-                        mode: draft.mode,
-                        canvas: canvas
-                    )
-                    .aspectRatio(canvas.width / canvas.height, contentMode: .fit)
-                }
+                player
             }
             if let message = session.flashMessage {
                 Label(message, systemImage: "photo")
@@ -141,5 +132,24 @@ struct ProjectWindow: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .animation(.easeInOut(duration: 0.2), value: session.flashMessage)
+    }
+
+    /// The video at its own shape, with space to the window's edges.
+    private var player: some View {
+        let size = session.previewProject.renderSize ?? Size(width: 16, height: 9)
+        return PlayerView(player: session.playback.player)
+            .overlay {
+                // The player has the frame's shape, so the rectangle sits
+                // exactly on the uncropped frame.
+                if let draft = session.cropDraft, draft.mode != .original, let canvas = session.project.canvasSize {
+                    CropOverlay(
+                        rect: Binding(get: { draft.rect }, set: { session.updateCropDraft($0) }),
+                        mode: draft.mode,
+                        canvas: canvas
+                    )
+                }
+            }
+            .aspectRatio(size.width / size.height, contentMode: .fit)
+            .padding(16)
     }
 }
