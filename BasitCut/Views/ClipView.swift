@@ -1,6 +1,11 @@
 import SwiftUI
 import BasitCutCore
 
+extension Color {
+    /// The dark blue of the app icon's playhead.
+    static let iconInk = Color(red: 0.106, green: 0.125, blue: 0.188)
+}
+
 /// One clip (or the visible slice of it) on the timeline, with trim handles.
 struct ClipView: View {
     let name: String
@@ -14,24 +19,34 @@ struct ClipView: View {
     let onTrimChanged: (TimelineEditor.Edge, Double) -> Void
     let onTrimEnded: (TimelineEditor.Edge, Double) -> Void
 
-    private var color: Color {
-        if isMissing { return .gray }
-        return colorIndex.isMultiple(of: 2) ? .blue : .indigo
+    private var isBlue: Bool { colorIndex.isMultiple(of: 2) }
+
+    /// Neighbouring clips alternate between the app icon's two colors.
+    private var fill: LinearGradient {
+        let colors: [Color] = if isMissing { [.gray, .gray.opacity(0.8)] }
+        else if isBlue { [Color(red: 0.298, green: 0.553, blue: 1), Color(red: 0.141, green: 0.388, blue: 0.922)] }
+        else { [Color(red: 1, green: 0.761, blue: 0.294), Color(red: 1, green: 0.604, blue: 0.122)] }
+        return LinearGradient(colors: colors, startPoint: .top, endPoint: .bottom)
+    }
+
+    /// Dark on the light amber clips, where white would be hard to read.
+    private var textColor: Color {
+        isMissing || isBlue ? .white : .iconInk
     }
 
     var body: some View {
         ZStack(alignment: .leading) {
             RoundedRectangle(cornerRadius: 5)
-                .fill(color.gradient)
+                .fill(fill)
             RoundedRectangle(cornerRadius: 5)
-                .strokeBorder(isSelected ? Color.yellow : Color.black.opacity(0.3), lineWidth: isSelected ? 2 : 1)
+                .strokeBorder(isSelected ? Color.primary : Color.black.opacity(0.3), lineWidth: isSelected ? 2.5 : 1)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(name).font(.caption.weight(.medium))
                 Text(Timecode.string(duration)).font(.caption2).opacity(0.75)
             }
             .lineLimit(1)
-            .foregroundStyle(.white)
+            .foregroundStyle(textColor)
             .padding(.horizontal, 10)
 
             HStack(spacing: 0) {

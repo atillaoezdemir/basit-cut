@@ -64,9 +64,9 @@ struct CutBadge: View {
                 .foregroundStyle(transition == nil ? Color.secondary : Color.white)
                 .frame(width: 20, height: 20)
                 .background(
-                    Circle().fill(transition == nil ? AnyShapeStyle(.background.opacity(isHovered ? 1 : 0.7)) : AnyShapeStyle(Color.orange))
+                    Circle().fill(transition == nil ? AnyShapeStyle(.background.opacity(isHovered ? 1 : 0.7)) : AnyShapeStyle(Color.iconInk))
                 )
-                .overlay(Circle().strokeBorder(.black.opacity(0.25)))
+                .overlay(Circle().strokeBorder(transition == nil ? .black.opacity(0.25) : .white.opacity(0.7)))
                 .scaleEffect(isHovered ? 1.15 : 1)
                 .contentShape(Circle())
         }
