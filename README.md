@@ -32,7 +32,7 @@ It is deliberately limited: one video track, two kinds of transitions, two expor
 - **Cover image:** pick any frame as the cover (⇧⌘K). It is embedded in the exported file, cropped like the video.
 - **Export:**
   - **Original quality:** same codec, resolution, frame rate and average bitrate as the source. Without transitions or a crop, the video is copied without re-encoding (lossless and fast).
-  - **Space saving:** HEVC, at most 1080p (orientation kept), at most 4 Mbit/s, AAC audio.
+  - **Space saving:** HEVC, at most 1080p (orientation kept), at most 4 Mbit/s and at most 60% of the bitrate of H.264 sources (HEVC needs less data), AAC audio.
   - Both modes keep the metadata of the first clip: creation date, location, camera make and model.
 - **Missing files:** if videos were moved or a drive is disconnected, the project tells you which files are missing. You can locate each one, or pick a folder and basit-cut finds all of them by name.
 

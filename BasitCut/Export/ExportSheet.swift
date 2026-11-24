@@ -53,7 +53,7 @@ struct ExportSheet: View {
 
             Text(export.mode == .original
                  ? "Same codec, resolution, frame rate and bitrate as the source."
-                 : "HEVC at up to 4000 kbps, at most 1080p. Much smaller files.")
+                 : "HEVC at up to 4000 kbps, at most 1080p. Smaller files, slightly lower quality.")
                 .foregroundStyle(.secondary)
 
             framing

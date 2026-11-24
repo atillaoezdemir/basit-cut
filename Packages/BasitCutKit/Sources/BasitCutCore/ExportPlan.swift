@@ -5,7 +5,7 @@ public enum ExportMode: String, CaseIterable, Codable, Sendable {
     /// Source codec, resolution, frame rate and average bitrate. Lossless
     /// passthrough when nothing needs re-encoding.
     case original
-    /// HEVC at up to 4000 kbps, at most 1920×1080 (orientation kept), AAC 128 kbps.
+    /// HEVC at up to 4000 kbps (and 60% of the bitrate of H.264 sources), at most 1920×1080 (orientation kept), AAC 128 kbps.
     case spaceSaving
 }
 
@@ -38,6 +38,10 @@ public enum ExportPlan: Hashable, Sendable {
     case reencode(ExportSettings)
 
     public static let spaceSavingMaxBitrate = 4_000_000
+    /// HEVC needs less data than H.264 for similar quality, so H.264 sources
+    /// count with this share of their bitrate. HEVC and other sources have no
+    /// such reserve and count fully.
+    public static let spaceSavingH264Share = 0.6
     public static let spaceSavingAudioBitrate = 128_000
     public static let originalAudioBitrate = 256_000
     /// Longest edge × shortest edge for space saving; orientation is kept.
@@ -74,7 +78,7 @@ public enum ExportPlan: Hashable, Sendable {
                 codec: .hevc,
                 size: fitted(renderSize, within: spaceSavingMaxSize),
                 frameDuration: reference.frameDuration,
-                videoBitrate: min(spaceSavingMaxBitrate, bitrate),
+                videoBitrate: min(spaceSavingMaxBitrate, averageBitrate(of: project, h264Share: spaceSavingH264Share) ?? bitrate),
                 audioBitrate: spaceSavingAudioBitrate
             ))
         }
@@ -96,13 +100,15 @@ public enum ExportPlan: Hashable, Sendable {
     }
 
     /// Duration-weighted average of the sources' video bitrates, or nil if none is known.
-    public static func averageBitrate(of project: Project) -> Int? {
+    /// The bitrate of H.264 sources is multiplied by `h264Share`.
+    public static func averageBitrate(of project: Project, h264Share: Double = 1) -> Int? {
         var weighted = 0.0
         var total = 0.0
         for clip in project.clips {
             guard let source = project.source(id: clip.sourceID), source.videoBitrate > 0 else { continue }
             let seconds = clip.duration.seconds
-            weighted += Double(source.videoBitrate) * seconds
+            let share = source.codec.family == VideoCodec.h264.family ? h264Share : 1
+            weighted += Double(source.videoBitrate) * share * seconds
             total += seconds
         }
         return total > 0 ? Int((weighted / total).rounded()) : nil

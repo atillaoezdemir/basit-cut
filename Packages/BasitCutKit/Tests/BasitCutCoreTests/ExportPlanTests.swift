@@ -101,9 +101,26 @@ struct ExportPlanTests {
         )))
     }
 
-    @Test func spaceSavingKeepsLowerSourceBitrate() throws {
-        let plan = try ExportPlan.make(for: project([Fixture.source(bitrate: 2_500_000)]), mode: .spaceSaving)
-        guard case .reencode(let settings) = plan else { Issue.record("expected re-encode"); return }
+    @Test func spaceSavingUsesLessForH264AndKeepsLowerHEVCBitrates() throws {
+        func bitrate(_ sources: [MediaSource]) throws -> Int? {
+            guard case .reencode(let settings) = try ExportPlan.make(for: project(sources), mode: .spaceSaving) else { return nil }
+            return settings.videoBitrate
+        }
+        let h264 = Fixture.source(seconds: 10, bitrate: 2_500_000)
+        let hevc = Fixture.source(seconds: 10, codec: .hevc, bitrate: 2_500_000)
+        #expect(try bitrate([h264]) == 1_500_000)
+        #expect(try bitrate([hevc]) == 2_500_000)
+        #expect(try bitrate([h264, hevc]) == 2_000_000, "each source by its own codec")
+        #expect(try bitrate([Fixture.source(bitrate: 6_000_000)]) == 3_600_000)
+        #expect(try bitrate([Fixture.source(bitrate: 50_000_000)]) == 4_000_000, "still capped")
+    }
+
+    @Test func originalModeKeepsTheH264Bitrate() throws {
+        var project = project([Fixture.source(bitrate: 2_500_000)])
+        project.crop.mode = .ratio9x16
+        guard case .reencode(let settings) = try ExportPlan.make(for: project, mode: .original) else {
+            Issue.record("expected re-encode"); return
+        }
         #expect(settings.videoBitrate == 2_500_000)
     }
 

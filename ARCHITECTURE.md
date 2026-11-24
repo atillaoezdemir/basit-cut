@@ -183,7 +183,7 @@ The same `BuiltComposition` feeds both the `AVPlayerItem` (preview) and the `Exp
 It turns `(project, mode)` into `.passthrough` or `.reencode(ExportSettings)`.
 
 - **Original quality:** source codec, resolution (the first clip's upright size), frame rate, and the duration-weighted average source bitrate. If the project has **no transitions and no crop**, and every clip shares the first clip's format (size, codec, frame rate) and rotation, the result is `.passthrough`. A single passthrough track can't mix formats or rotations cleanly, so mixed projects are re-encoded. H.264 stays H.264; other codecs (HEVC, ProRes, …) are re-encoded as HEVC. Audio is AAC at 256 kbps.
-- **Space saving:** HEVC with the `hvc1` tag via VideoToolbox, bitrate `min(4000 kbps, source bitrate)`, source frame rate, and resolution fitted within 1920×1080 with orientation kept (4K portrait → 1080×1920, ≤1080p unchanged). Audio is AAC at 128 kbps.
+- **Space saving:** HEVC with the `hvc1` tag via VideoToolbox, bitrate `min(4000 kbps, source bitrate)` where H.264 sources count with 60% of their bitrate (HEVC needs less data for similar quality), source frame rate, and resolution fitted within 1920×1080 with orientation kept (4K portrait → 1080×1920, ≤1080p unchanged). Audio is AAC at 128 kbps.
 - If no source reports a bitrate, it is estimated at 0.1 bits per pixel per frame.
 
 ### `Exporter` (Media)
